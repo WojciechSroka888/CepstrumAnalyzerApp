@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">CepstrumAnalyzer</string>
+    <string name="vertical_ellipsis">&#8942;</string>
+    <string-array name="recording_array">
+        <item>vowel "a"</item>
+        <item>vowel "e"</item>
+        <item>vowel "i"</item>
+        <item>random voice</item>
+
+    </string-array>
+</resources>

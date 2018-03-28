@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--default color-->
+    <color name="colorPrimary0">#3F51B5</color>
+    <color name="colorPrimaryDark0">#303F9F</color>
+    <color name="colorAccent0">#FF4081</color>
+    <!--my color-->
+    <color name="gray1">#A9A8A8</color>
+    <color name="blue1">#3FCFFF</color>
+    <color name="orange1">#E4A31F</color>
+    <color name="red1">#FDA10906</color>
+    <color name="blue">#3b409d</color>
+    <color name="gray2">#e2e1e1</color>
+    <color name="black1">#000000</color>
+    <color name="buttonRed">#FDA10906</color>
+    <color name="buttonBlue">#3b409d</color>
+    <color name="buttonGray">#A9A8A8</color>
+    <color name="buttonTextColor">#dddddd</color>
+    <!--theme color-->
+    <color name="colorPrimary">#a10906</color> <!-- toolbar, i ine-->
+    <color name="colorPrimaryDark">#a9a8a8</color> <!--theme color-->
+    <color name="colorAccent">#3b409d</color> <!--wiele podkreśleń-->
+
+    <color name="textColorPrimary">#dddddd</color> <!--text toolbar -->
+    <color name="textColor">#464646</color> <!--theme text dla menu i spinner-->
+    <color name="colorBackground">#e2e1e1</color> <!--okno np do spinnera-->
+    <color name="navigationBarColor">#000000</color> <!--na dole pasek z guzikami-->
+    <color name="windowBackground">#e2e1e1</color> <!--tło -->
+
+
+
+</resources>

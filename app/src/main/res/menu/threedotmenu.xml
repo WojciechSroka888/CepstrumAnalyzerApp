@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item android:title="Permissions settings">
+        <menu>
+            <item android:title="Memory permission is required"></item>
+            <item android:title="Record permission is required"></item>
+
+            <item android:title="privacy policy URL"
+                android:id="@+id/click_privacy_url" />
+        </menu>
+    </item>
+
+    <item android:title="visit Wave Project website"
+          android:id="@+id/click_website"/>
+
+</menu>

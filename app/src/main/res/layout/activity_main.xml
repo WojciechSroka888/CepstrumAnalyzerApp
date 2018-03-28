@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="5dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/back_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/buttonTextColor"
+                android:text="Back"
+                android:textSize="15sp"
+                android:background="@drawable/next_button"/>
+
+            <Button
+                android:id="@+id/play_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/buttonTextColor"
+                android:text="Play"
+                android:textSize="15sp"
+                android:background="@drawable/record_button"/>
+
+            <Button
+                android:id="@+id/analyze_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/buttonTextColor"
+                android:text="Analyze"
+                android:textSize="15sp"
+                android:background="@drawable/next_button"/>
+
+            <Button
+                android:id="@+id/a_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/buttonTextColor"
+                android:text="A"
+                android:textSize="13sp"
+                android:background="@drawable/third_button"/>
+
+            <Button
+                android:id="@+id/b_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/buttonTextColor"
+                android:text="B"
+                android:textSize="13sp"
+                android:background="@drawable/third_button"/>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/legend_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.75"
+            android:paddingTop="5dp"
+            android:textSize="14sp"
+            android:textColor="@color/black1"
+            android:layout_gravity="center_horizontal"/>
+
+        <TextView
+            android:id="@+id/stream_text"
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.25"
+            android:paddingTop="5dp"
+            android:textSize="14sp"
+            android:textColor="@color/black1" />
+    </LinearLayout>
+
+    <com.github.mikephil.charting.charts.ScatterChart
+        android:id="@+id/scatter_chart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    <!--ScatterChart nie działa ze ScroolView !!! -->
+
+</LinearLayout>
+</ScrollView>
