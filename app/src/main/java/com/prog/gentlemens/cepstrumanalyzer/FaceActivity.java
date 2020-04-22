@@ -28,6 +28,8 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.widget.Toast;
 
+import com.prog.gentlemens.cepstrumanalyzer.permission.Permission;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -104,7 +106,9 @@ public class FaceActivity extends AppCompatActivity {
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
                 R.array.recording_array, android.R.layout.simple_spinner_item);
         // Specify the layout to use when the list of choices appears
-
+    
+        Permission.setPermissions(this);
+        
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         // Apply the adapter to the spinner
         mspinner.setAdapter(adapter);
@@ -127,14 +131,6 @@ public class FaceActivity extends AppCompatActivity {
         setSupportActionBar(myToolbar);
 
         faceWelcome();      //becose of mrecordbutton
-
-        //Dangerous permissions
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (setPermissions() != true) {
-                recordAllowed = false;
-            }
-        }
-        //*******************
 
         mnextButton.setOnClickListener(new View.OnClickListener() {
             //send required values to MainActivity
@@ -456,94 +452,7 @@ public class FaceActivity extends AppCompatActivity {
 
         recordingTimer(recordingTime);
     }
-
-    private boolean setPermissions() {
-        if (checkPermissionWriteExternalStorage() == false) {
-            requestWriteExternalStoragePermission();
-        } else {
-            PERMISSION_WRITE_EXTERNAL_STORAGE = true;
-        }
-
-        if (checkPermissionRecordAudio() == false) {
-            requestRecordAudioPermission();
-        } else {
-            PERMISSION_RECORD_AUDIO = true;
-        }
-
-        if (PERMISSION_RECORD_AUDIO == true && PERMISSION_WRITE_EXTERNAL_STORAGE == true) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    //DANGEROUS PERMISSION MARSHMALLOW OR HIGHER
-    private boolean checkPermissionWriteExternalStorage() {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_DENIED) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    //DANGEROUS PERMISSION MARSHMALLOW OR HIGHER
-    private boolean checkPermissionRecordAudio() {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
-                == PackageManager.PERMISSION_DENIED) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    private void requestWriteExternalStoragePermission() {
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-            Toast.makeText(FaceActivity.this, "Write External Storage permission allows us to do store record. Please allow this permission in App Settings.", Toast.LENGTH_LONG).show();
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_WRITE_EXTERNAL_STORAGE_CODE);
-        }
-    }
-
-    private void requestRecordAudioPermission() {
-
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this, android.Manifest.permission.RECORD_AUDIO)) {
-            Toast.makeText(FaceActivity.this, "Record Audio permission allows us to do record. Please allow this permission in App Settings  .", Toast.LENGTH_LONG).show();
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, PERMISSION_RECORD_AUDIO_CODE);
-        }
-    }
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case PERMISSION_WRITE_EXTERNAL_STORAGE_CODE: {
-                //allowed
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    PERMISSION_WRITE_EXTERNAL_STORAGE = true;
-                }
-
-                //denied
-                else {
-                    PERMISSION_WRITE_EXTERNAL_STORAGE = false;
-                }
-                return;
-            }
-
-            case PERMISSION_RECORD_AUDIO_CODE: {
-                //allowed
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    PERMISSION_RECORD_AUDIO = true;
-                }
-
-                //denied
-                else {
-                    PERMISSION_RECORD_AUDIO = false;
-                }
-                return;
-            }
-        }
-    }
-
+    
     public void openWebPage(String url) {
         try {
             Uri uri = Uri.parse(url);  //http://cepstralanalysisapp.webnode.com/privacy-policy/
