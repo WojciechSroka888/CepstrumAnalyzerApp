@@ -47,6 +47,7 @@ import com.github.mikephil.charting.data.ScatterData;
 import com.github.mikephil.charting.data.ScatterDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
 import com.github.mikephil.charting.utils.Highlight;
+import com.prog.gentlemens.cepstrumanalyzer.math.FFT;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -374,7 +375,7 @@ public class MainActivity extends AppCompatActivity {
                 temp[j] = dane2[ j + i * d ] * oknoBlackmana[j];
             }
 
-            fft.RealFT(temp, 1);
+            FFT.RealFT(temp, 1);
 
             for( int j = 0; j < temp.length; ++j )
             {
@@ -407,7 +408,7 @@ public class MainActivity extends AppCompatActivity {
         System.out.println( "*****IFFT***** " );
         for( int i = 0; i < N; ++i )
         {
-            fft.RealFT(tabl[i], -1);
+            FFT.RealFT(tabl[i], -1);
 
             tabl[i][ tabl[i].length - 1 ] = 0;
             tabl[i][ tabl[i].length - 2 ] = 0;
@@ -506,7 +507,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //Fourier transform
-        fft.RealFT(tabl, 1);
+        FFT.RealFT(tabl, 1);
 
         System.out.println( "*****AFTER FFT*****" );
         //****************************************************************************************
@@ -528,7 +529,7 @@ public class MainActivity extends AppCompatActivity {
         System.out.println( "*****AFTER LN i ABS*****" );
 
         System.out.println( "*****IFFT***** " );
-        fft.RealFT(tabl, -1);
+        FFT.RealFT(tabl, -1);
 
         tabl[ tabl.length - 1 ] = 0;
         tabl[ tabl.length - 2 ] = 0;
