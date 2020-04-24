@@ -22,7 +22,12 @@ import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.Toast;
 
+import com.prog.gentlemens.cepstrumanalyzer.data.Data;
+import com.prog.gentlemens.cepstrumanalyzer.enums.VowelName;
+import com.prog.gentlemens.cepstrumanalyzer.message.RecordMessage;
 import com.prog.gentlemens.cepstrumanalyzer.permission.Permission;
+import com.prog.gentlemens.cepstrumanalyzer.thread.RecordThread;
+import com.prog.gentlemens.cepstrumanalyzer.thread.WriteThread;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -30,6 +35,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.round;
+import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.shortToByteConversion;
 
 public class FaceActivity extends AppCompatActivity {
 	
@@ -46,38 +56,20 @@ public class FaceActivity extends AppCompatActivity {
 	private Spinner mspinner = null;
 	private ProgressBar mprogress;
 	
-	private int vowelName = 2;
+	private int vowelNameOrdinal;
 	private String fileName;
-	
 	private String pathFaceActivity = null;
-	//private boolean comeBack = false;   //pathFaceActivity != null -> recorded == true
-	//public static final String PREFS_NAME = "myPrefsFile";
-	//private SharedPreferences mFaceShared;
 	
 	private int recordingTime = 5000;
 	private int mProgressStatus = 0;
-	
+	private RecordThread recordThread = null;
 	private CountDownTimer counter;
 	
 	private boolean recordAllowed = true;
 	
 	private Toolbar myToolbar;
 	
-	//****************************AUDIO RECORD VARIABLE*******************************************
-	
-	private static final int sampleRateInHz = 22050;
-	private static final int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-	private static final int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-	
 	private boolean isRecording = false;
-	
-	private AudioRecord recorder = null;
-	private Thread recordingThread = null;
-	
-	private int BufferElementsRec = 1024;
-	private int BytesPerElement = 2;
-	
-	//************************************END AUDIO RECORD VARIABLE*********************************
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -100,17 +92,17 @@ public class FaceActivity extends AppCompatActivity {
 		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		// Apply the adapter to the spinner
 		mspinner.setAdapter(adapter);
-		
+		final Intent mainActivityIntent = new Intent(this, MainActivity.class);
 		mspinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 			public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
 				Object item = parent.getItemAtPosition(pos);
 				System.out.println("pos = " + pos + " item = " + item.toString());
-				vowelName = pos + 1;
+				vowelNameOrdinal = pos;
 			}
 			
 			@Override
 			public void onNothingSelected(AdapterView<?> parent) {
-			
+				vowelNameOrdinal = 0;
 			}
 			
 		});
@@ -125,21 +117,17 @@ public class FaceActivity extends AppCompatActivity {
 		mnextButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
+				//android.content.Intent public Intent(android.content.Context packageContext,
+				//              Class<?> cls
 				if (pathFaceActivity != null) {
 					if (isRecording == false) {
-						Context context;
-						context = getApplicationContext();
-						
-						Intent intent = new Intent(context, MainActivity.class);
-						
-						intent.putExtra("put_vowel", vowelName);
-						intent.putExtra("pathFaceActivity", pathFaceActivity);
-						intent.putExtra("put_name", fileName);
+						mainActivityIntent.putExtra("put_vowel", vowelNameOrdinal);
+						mainActivityIntent.putExtra("pathFaceActivity", pathFaceActivity);
+						mainActivityIntent.putExtra("put_name", fileName);
 						//intent.putExtra("put_channelConfig", channelConfig);
-						intent.putExtra("recordingTime", recordingTime);
-						intent.putExtra("put_sampleRateInHz", sampleRateInHz);
+						mainActivityIntent.putExtra("recordingTime", recordingTime);
 						
-						startActivity(intent);
+						startActivity(mainActivityIntent);
 					} else {
 						mnextButton.setText("Wait until record");
 					}
@@ -223,100 +211,21 @@ public class FaceActivity extends AppCompatActivity {
 	}
 	
 	private void saveData() {
-		File appFile = getFilesDir();
+		Data currentData = new Data();
+		currentData.setName(mnameEdit.getText().toString(),
+							msurnameEdit.getText().toString(),
+				VowelName.values()[vowelNameOrdinal].toString());
 		
-		try {
-			getName = mnameEdit.getText().toString();
-			System.out.println("SUCCESS GET NAME");
-			
-		} catch (Throwable t) {
-			System.out.println("FALSE GET NAME");
-		}
+		currentData.setPath(getFilesDir().toString());
+		currentData.createNewFile();
 		
-		try {
-			getSurname = msurnameEdit.getText().toString();
-			System.out.println("SUCCESS GET SURNAME");
-			
-		} catch (Throwable t) {
-			System.out.println("FALSE GET SURNAME");
-		}
+		pathFaceActivity = currentData.getPath();
 		
-		switch (vowelName) {
-			case 1:
-				fileName = "_A_" + getDate() + "_audio.pcm";
-				break;
-			case 2:
-				fileName = "_E_" + getDate() + "_audio.pcm";
-				break;
-			case 3:
-				fileName = "_I_" + getDate() + "_audio.pcm";
-				break;
-			default:
-				fileName = "_?_" + getDate() + "_audio.pcm";
-				break;
-		}
-		
-		fileName = getName + getSurname + fileName;
-		
-		File file = new File(appFile.getAbsolutePath(), fileName);
-		
-		pathFaceActivity = file.getAbsolutePath();
-		
-		try {
-			if (!file.exists()) {
-				file.createNewFile();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		short shortData[] = new short[BufferElementsRec];
-		byte byteData[] = new byte[BufferElementsRec * BytesPerElement];
-		
-		FileOutputStream stream_to_write = null;
-		
-		try {
-			stream_to_write = new FileOutputStream(file);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		
-		while (isRecording) {
-			int numberOfDataRead = recorder.read(shortData, 0, BufferElementsRec);
-			
-			isRecording = numberOfDataRead > 0;
-			
-			if (isRecording) {
-				try {
-					short_to_byte_conversion(shortData, numberOfDataRead, byteData);
-					stream_to_write.write(byteData, 0, numberOfDataRead * BytesPerElement);
-				} catch (Exception e) {
-					e.printStackTrace();
-					System.out.println("FALSE");
-				}
-			}
-		}
-		
-		try {
-			stream_to_write.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	public String getDate() {
-		Date date = new Date();
-		String current_date = DateFormat.getDateTimeInstance().format(date);
-		
-		return current_date;
-	}
-	
-	private void short_to_byte_conversion(short[] shortData, int n, byte[] byteData) {
-		for (int i = 0; i < n; i++) {
-			byteData[i * 2] = (byte) (shortData[i] & 0x00FF);
-			byteData[(i * 2) + 1] = (byte) (shortData[i] >> 8);
-			//shortData[i] = 0;						//why ?
-		}
+		BlockingQueue<RecordMessage> queueWithRecordThread = new LinkedBlockingQueue<>();
+		isRecording = true;
+		new Thread(new WriteThread(queueWithRecordThread, currentData), "writeThread").start();
+		recordThread = new RecordThread(queueWithRecordThread);
+		new Thread(recordThread, "recordThread").start();
 	}
 	
 	private int setRecordingTime() {
@@ -360,52 +269,15 @@ public class FaceActivity extends AppCompatActivity {
 		counter.start();
 	}
 	
-	protected int round(double value) {
-		if ((value - (int) value) >= 0.5)            //(int) value == floor(value)
-		{
-			return (int) Math.floor(value + 0.5);
-		} else {
-			return (int) Math.floor(value);
-		}
-	}
-	
-	private void interruptFunction() {
-		//stops timer and progressbar
-		
-		
-		//stops recording
-		stopRecording();
-	}
-	
 	private void stopRecording() {
-		//closes audio
-		if (recorder != null) {
-			recordingThread = null;
-			recorder.stop();
-			recorder.release();
-			
-			isRecording = false;
-			
-			recorder = null;
-		}
+		recordThread.stopRecording();
+		isRecording = false;
 	}
 	
 	private void startRecording() {
 		recordingTime = setRecordingTime();
 		
-		recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRateInHz, channelConfig, audioFormat, BufferElementsRec * BytesPerElement);
-		
-		recorder.startRecording();
-		
-		isRecording = true;
-		
-		recordingThread = new Thread(new Runnable() {
-			public void run() {
-				saveData();
-			}
-		}, "AudioRecorder Thread");
-		
-		recordingThread.start();
+		saveData();
 		
 		recordingTimer(recordingTime);
 	}

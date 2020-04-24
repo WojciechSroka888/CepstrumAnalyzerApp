@@ -322,4 +322,67 @@ public final class MathOperations {
 		}
 	}
 	
+	// ********************************************************
+	// TODO validation, TODO names
+	public static float roundPrime(double value) {
+		if ((value >= (Math.floor(value) + 0.25)) && (value <= (Math.floor(value) + 0.75))) {
+			return ((float) (Math.floor(value) + 0.5));
+		} else {
+			if (value < Math.floor(value) + 0.25) {
+				return (float) Math.floor(value);
+			} else {
+				return (float) Math.floor(value) + 1;
+			}
+		}
+	}
+	
+	public static double arithmeticFrequencyAverage(double[] tabl) {
+		System.out.println("*****ArithmeticFrequency()*****");
+		double result = 0;
+		
+		int n = 0;
+		
+		for (int i = 0; i < tabl.length; ++i, ++n) {
+			if (tabl[i] == 0)        //it means silence
+			{
+				n = n - 1;
+				continue;
+			}
+			
+			result = result + tabl[i];
+		}
+		
+		System.out.println("*****END arithmeticFrequency()*****");
+		
+		return n != 0 ? result / n : n;
+	}
+	
+	public static short[] byteToShortConversion(byte[] byteData) {
+		short[] shortData = new short[byteData.length / 2];
+		
+		for (int i = 0; i < byteData.length / 2; i++) {
+			shortData[i] = (short) ((byteData[2 * i + 1] << 8) + byteData[2 * i]);  //waga operatorów
+		}
+		
+		return shortData;
+	}
+	
+	public static void shortToByteConversion(short[] shortData, int n, byte[] byteData) {
+		for (int i = 0; i < n; i++) {
+			byteData[i * 2] = (byte) (shortData[i] & 0x00FF);
+			byteData[(i * 2) + 1] = (byte) (shortData[i] >> 8);
+			//shortData[i] = 0;						//why ?
+		}
+	}
+	
+	public static byte[] shortToByteConversion(short[] shortData, int n) {
+		byte[] resultByteData = new byte[2 * n];
+		for (int i = 0; i < n; i++) {
+			resultByteData[i * 2] = (byte) (shortData[i] & 0x00FF);
+			resultByteData[(i * 2) + 1] = (byte) (shortData[i] >> 8);
+			//shortData[i] = 0;						//why ?
+		}
+		return resultByteData;
+	}
+	
 }
