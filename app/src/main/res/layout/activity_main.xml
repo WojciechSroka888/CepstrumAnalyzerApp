@@ -74,7 +74,7 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/legend_text"
+            android:id="@+id/legend_text_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="0.75"
@@ -84,7 +84,7 @@
             android:layout_gravity="center_horizontal"/>
 
         <TextView
-            android:id="@+id/stream_text"
+            android:id="@+id/stream_text_view"
 
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
