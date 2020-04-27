@@ -57,6 +57,10 @@ public class RecordThread implements Runnable {
 		this.recordConfiguration = recordConfiguration;
 	}
 	
+	public AudioRecord getAudioRecord() {
+		return audioRecord;
+	}
+	
 	private boolean initialize() {
 		boolean isDefault = false;
 		if (recordConfiguration == null) {

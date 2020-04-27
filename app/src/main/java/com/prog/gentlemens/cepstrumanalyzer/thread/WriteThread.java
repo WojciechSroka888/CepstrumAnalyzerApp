@@ -1,5 +1,9 @@
 package com.prog.gentlemens.cepstrumanalyzer.thread;
 
+import android.os.Build;
+import android.support.annotation.RequiresApi;
+import android.support.annotation.RequiresPermission;
+
 import com.prog.gentlemens.cepstrumanalyzer.data.Data;
 import com.prog.gentlemens.cepstrumanalyzer.message.RecordMessage;
 
@@ -15,42 +19,46 @@ public class WriteThread implements Runnable {
 	private BlockingQueue<RecordMessage> queueWithRecordThread;
 	private Logger logger = Logger.getLogger(WriteThread.class.getName());
 	private Data currentData;
-	private FileOutputStream fileOutputStream;
+	
+	public WriteThread (){
+	}
+	
+	public WriteThread(BlockingQueue<RecordMessage> queueWithRecordThread){
+		this.queueWithRecordThread = queueWithRecordThread;
+	}
 	
 	public WriteThread(BlockingQueue<RecordMessage> queueWithRecordThread, Data currentData) {
 		this.queueWithRecordThread = queueWithRecordThread;
 		this.currentData = currentData;
 	}
 	
+	//TODO validate this data
+	public void init(Data currentData){
+		this.currentData = currentData;
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	@Override
 	public void run() {
-		setFileOutputStream();
-		try {
-			while (true) {
-				if (queueWithRecordThread.take().streaming()) {
-					fileOutputStream.write(shortToByteConversion(queueWithRecordThread.take().getContentArray(), queueWithRecordThread.take().getContentArray().length
-));
-				}
+		try(FileOutputStream fileOutputStream = new FileOutputStream(currentData.getCurrentFile())) {
+			while (queueWithRecordThread.take().streaming()) {
+				fileOutputStream.write(shortToByteConversion(queueWithRecordThread
+						.take()
+						.getContentArray(), queueWithRecordThread
+						.take()
+						.getContentArray().length));
 			}
-		} catch (InterruptedException | IOException e) {
+		} catch (InterruptedException | FileNotFoundException e) {
 			logger.warning(e.getMessage());
 			Thread.currentThread().interrupt();
-		} finally {
-			try {
-				fileOutputStream.close();
-			} catch (IOException e) {
-				logger.warning(e.getMessage());
-			}
+		} catch (IOException e) {
+			logger.warning(e.getMessage());
+			Thread.currentThread().interrupt();
 		}
 	}
 	
-	private void setFileOutputStream() {
-		try {
-			fileOutputStream = new FileOutputStream(currentData.getCurrentFile());
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		
+	public Data getCurrentData(){
+		return  currentData;
 	}
 	
 }

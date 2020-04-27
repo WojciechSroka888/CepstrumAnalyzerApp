@@ -215,14 +215,17 @@ public class MainActivity extends AppCompatActivity {
 	
 	private boolean mainWelcome() {
 		//new recording, new data, temp always has sth from -> FaceActivity
-		if (pathMainActivity.equals(getIntent().getStringExtra("pathFaceActivity"))) {
-			return false;        //old
-		} else {
-			pathMainActivity = getIntent().getStringExtra("pathFaceActivity");
-			return true;       //new
+		if(getIntent().getStringExtra("pathFaceActivity") != null) {
+			if (pathMainActivity.equals(getIntent().getStringExtra("pathFaceActivity"))) {
+				return false;        //old
+			} else {
+				pathMainActivity = getIntent().getStringExtra("pathFaceActivity");
+				return true;       //new
+			}
+			//if different - can be new or first recording or new or new different recording
+			//if the same -> back
 		}
-		//if different - can be new or first recording or new or new different recording
-		//if the same -> back
+		return false;
 	}
 	
 	private boolean fileExist(String pathCheck) {
