@@ -53,7 +53,7 @@ import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.byteToSho
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.calculateBlackmannWindow;
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.round;
 
-public class MainActivity extends AppCompatActivity {
+public class ResultActivity extends AppCompatActivity {
 	
 	private Button mplaybutton;
 	private Button manalyzebutton;
@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
 			public void onClick(View v) {
 				Context context;
 				context = getApplicationContext();
-				Intent intent = new Intent(context, FaceActivity.class);
+				Intent intent = new Intent(context, DataActivity.class);
 				
 				intent.putExtra("pathMainActivity", pathMainActivity);
 				intent.putExtra("comeBack", true);

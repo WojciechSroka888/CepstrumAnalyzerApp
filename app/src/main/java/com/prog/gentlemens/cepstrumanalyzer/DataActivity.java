@@ -20,30 +20,20 @@ import android.widget.Toast;
 
 import com.prog.gentlemens.cepstrumanalyzer.data.Data;
 import com.prog.gentlemens.cepstrumanalyzer.enums.VowelName;
-import com.prog.gentlemens.cepstrumanalyzer.message.RecordMessage;
 import com.prog.gentlemens.cepstrumanalyzer.permission.Permission;
-import com.prog.gentlemens.cepstrumanalyzer.thread.RecordThread;
-import com.prog.gentlemens.cepstrumanalyzer.thread.WriteThread;
+import com.prog.gentlemens.cepstrumanalyzer.thread.service.DataActivityThreadService;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
 
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.round;
 
-public class FaceActivity extends AppCompatActivity {
+public class DataActivity extends AppCompatActivity {
 	
-	private Logger logger = Logger.getLogger(FaceActivity.class.getName());
-	private String getName = "John";
-	private String getSurname = "Smith";
-	private String fileName;
-	private String pathFaceActivity = null;
-	private int vowelNameOrdinal;
-	private int recordingTime = 5000;
-	private boolean isRecordAllowed = true;
-	private boolean isRecording = false;
-	private RecordThread recordThread = null;
+	private Logger logger = Logger.getLogger(DataActivity.class.getName());
+	private DataActivityThreadService dataActivityThreadService =DataActivityThreadService.getInstance();
 	private Toolbar toolbar;
+	private int vowelNameOrdinal;
+	private boolean isRecordAllowed = true;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -51,7 +41,7 @@ public class FaceActivity extends AppCompatActivity {
 		setContentView(R.layout.activity_face);
 		
 		Button nextButton = findViewById(R.id.next_button);
-		setNextButton(new Intent(this, MainActivity.class), nextButton);
+		setNextButton(new Intent(this, ResultActivity.class), nextButton);
 		
 		Button recordButton = findViewById(R.id.record_button);
 		setRecordButton(recordButton);
@@ -66,7 +56,7 @@ public class FaceActivity extends AppCompatActivity {
 		spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 			@Override
 			public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-				vowelNameOrdinal = pos;
+				vowelNameOrdinal = pos + 1;
 			}
 			
 			@Override
@@ -86,12 +76,11 @@ public class FaceActivity extends AppCompatActivity {
 		nextButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				if (pathFaceActivity != null) {
-					if (!isRecording) {
+				if (dataActivityThreadService.getCurrentData() != null) {
+					if (!dataActivityThreadService.getAudioRecordState()) {
 						intent.putExtra("put_vowel", vowelNameOrdinal);
-						intent.putExtra("pathFaceActivity", pathFaceActivity);
-						intent.putExtra("put_name", fileName);
-						intent.putExtra("recordingTime", recordingTime);
+						intent.putExtra("pathFaceActivity", dataActivityThreadService.getCurrentData().getPath());
+						intent.putExtra("put_name", dataActivityThreadService.getCurrentData().getName());
 						startActivity(intent);
 					} else {
 						nextButton.setText(R.string.wait_until_record);
@@ -108,11 +97,12 @@ public class FaceActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View v) {
 				if (isRecordAllowed) {
-					if (!isRecording) {
+					if (!dataActivityThreadService.getAudioRecordState()) {
 						recordButton.setText(R.string.stop);
 						startRecording();
 					} else {
 						recordButton.setText(R.string.recording_in_progress);
+						// TODO stopRecording()
 					}
 				} else {
 					recordButton.setText(R.string.need_user_access_to_record);
@@ -123,7 +113,7 @@ public class FaceActivity extends AppCompatActivity {
 	
 	private void setPathMainActivityWhenComingFromOtherActivity() {
 		if (getIntent().getBooleanExtra("comeBack", false)) {
-			pathFaceActivity = getIntent().getStringExtra("pathMainActivity");
+			//pathFaceActivity = getIntent().getStringExtra("pathMainActivity");
 			((Button) findViewById(R.id.record_button)).setText(R.string.recorded);
 		}
 	}
@@ -155,7 +145,7 @@ public class FaceActivity extends AppCompatActivity {
 		}
 	}
 	
-	private void saveData() {
+	private Data saveData() {
 		EditText nameEditText = findViewById(R.id.name_edit_text);
 		EditText surnameEditText = findViewById(R.id.surname_edit_text);
 		
@@ -166,27 +156,21 @@ public class FaceActivity extends AppCompatActivity {
 		currentData.setPath(getFilesDir().toString());
 		currentData.createNewFile();
 		
-		pathFaceActivity = currentData.getPath();
-		
-		BlockingQueue<RecordMessage> queueWithRecordThread = new LinkedBlockingQueue<>();
-		
-		new Thread(new WriteThread(queueWithRecordThread, currentData), "writeThread").start();
-		recordThread = new RecordThread(queueWithRecordThread);
-		new Thread(recordThread, "recordThread").start();
+		return currentData;
 	}
 	
 	private int setRecordingTime() {
 		EditText recordingTimeEditText = findViewById(R.id.recording_time_edit_text);
-		int functionTemp = 5000;
+		final int defaultTime = 5000;
+		final int maxTime = 30000;
+		int functionTemp = defaultTime;
 		
 		try {
 			functionTemp = Integer.parseInt(recordingTimeEditText.getText().toString());
-			if (functionTemp < 0) {
-				functionTemp = 5000;
-			} else {
-				if (functionTemp >= 30000) {
-					functionTemp = 30000;
-				}
+			if(functionTemp <= 0){
+				return defaultTime;
+			}else if(functionTemp > maxTime){
+				return maxTime;
 			}
 		} catch (NumberFormatException e) {
 			logger.warning("Could not parse " + e);
@@ -195,13 +179,13 @@ public class FaceActivity extends AppCompatActivity {
 		return functionTemp;
 	}
 	
-	private void recordingTimer(int interval) {
-		CountDownTimer counter = new CountDownTimer(interval, 10) {
+	private void recordingTimer(final long millisInFuture) {
+		CountDownTimer counter = new CountDownTimer(millisInFuture, 10) {
 			ProgressBar progressBar = findViewById(R.id.recording_progress_bar);
 			
 			@Override
 			public void onTick(long millisUntilFinished) {
-				int progressStatus = round((((long) recordingTime - millisUntilFinished) * 100.0) / (long) recordingTime);
+				int progressStatus = round(((millisInFuture - millisUntilFinished) * 100.0) / millisInFuture);
 				progressBar.setProgress(progressStatus + 1);
 			}
 			
@@ -219,16 +203,13 @@ public class FaceActivity extends AppCompatActivity {
 	}
 	
 	private void stopRecording() {
-		recordThread.stopRecording();
-		isRecording = false;
+		dataActivityThreadService.stopRecording();
 	}
 	
 	private void startRecording() {
-		recordingTime = setRecordingTime();
-		
-		saveData();
-		
-		recordingTimer(recordingTime);
+		dataActivityThreadService.initWriteThread(saveData());
+		dataActivityThreadService.start();
+		recordingTimer(setRecordingTime());
 	}
 	
 	public void openWebPage(String url) {
@@ -250,8 +231,8 @@ public class FaceActivity extends AppCompatActivity {
 		
 		logger.info("*****FaceActivity onSaveInstanceState()*****");
 		
-		if (pathFaceActivity != null) {
-			savedInstanceState.putString("pathFaceActivity", pathFaceActivity);
+		if (dataActivityThreadService.getCurrentData().getPath() != null) {
+			savedInstanceState.putString("pathFaceActivity", dataActivityThreadService.getCurrentData().getPath());
 		}
 	}
 	
@@ -260,7 +241,7 @@ public class FaceActivity extends AppCompatActivity {
 		
 		logger.info("*****FaceActivity onRestoreInstanceState()*****");
 		
-		pathFaceActivity = savedInstantState.getString("pathFaceActivity");
+		//pathFaceActivity = savedInstantState.getString("pathFaceActivity");
 	}
 }
 //******************CODE UNDERLINE IS IMPORTANT FOR CODE IMPROVEMENT********************************
