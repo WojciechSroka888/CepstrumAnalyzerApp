@@ -1,6 +1,13 @@
 <resources>
     <string name="app_name">CepstrumAnalyzer</string>
     <string name="vertical_ellipsis">&#8942;</string>
+    <string name="recording_in_progress">Recording in progress</string>
+    <string name="need_user_access_to_record">Need user access to record</string>
+    <string name="stop">Stop</string>
+    <string name="recorded">Recorded</string>
+    <string name="next">next</string>
+    <string name="wait_until_record">Wait until record</string>
+    <string name="record_first">record first</string>
     <string-array name="recording_array">
         <item>vowel "a"</item>
         <item>vowel "e"</item>

@@ -10,11 +10,11 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <activity android:name="com.prog.gentlemens.cepstrumanalyzer.MainActivity">
+        <activity android:name="com.prog.gentlemens.cepstrumanalyzer.ResultActivity">
                 <action android:name="android.intent.action.MAIN" />
         </activity>
 
-        <activity android:name="com.prog.gentlemens.cepstrumanalyzer.FaceActivity">
+        <activity android:name="com.prog.gentlemens.cepstrumanalyzer.DataActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
