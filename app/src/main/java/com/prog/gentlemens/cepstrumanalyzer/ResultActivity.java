@@ -1,5 +1,6 @@
 package com.prog.gentlemens.cepstrumanalyzer;
 
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.media.AudioFormat;
@@ -24,17 +25,20 @@ import com.github.mikephil.charting.data.ScatterData;
 import com.github.mikephil.charting.data.ScatterDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
 import com.github.mikephil.charting.utils.Highlight;
+import com.prog.gentlemens.cepstrumanalyzer.data.Data;
 import com.prog.gentlemens.cepstrumanalyzer.math.FFT;
+import com.prog.gentlemens.cepstrumanalyzer.plot.ScatterGraph;
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.arithmeticFrequencyAverage;
@@ -45,6 +49,7 @@ import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.round;
 public class ResultActivity extends AppCompatActivity {
 	
 	private Logger logger = Logger.getLogger(ResultActivity.class.getName());
+	private Data currentData;
 	private Button playButton;
 	private Button analyzeButton;
 	private Button selectAButton;
@@ -69,15 +74,12 @@ public class ResultActivity extends AppCompatActivity {
 	private double SH;
 	private double fMean;
 	
-	private String pathMainActivity = null;     //string psth for this activity
-	private boolean newOrOld;                   //showing if it is new recording
-	
 	private boolean isAnalyzed = false;
 	private byte[] savedEnterMusicTemp = null;
 	
 	private String descriptionGraph = "Basic Frequency Line";
 	
-	private ScatterChart scatterchart = null;
+	private ScatterChart scatterChart = null;
 	private ScatterDataSet scatterdataset = null;
 	private ScatterData scatterdata = null;
 	private String description = null;
@@ -87,39 +89,7 @@ public class ResultActivity extends AppCompatActivity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		newOrOld = mainWelcome();
-		
-		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		
-		scatterchart = findViewById(R.id.scatter_chart);
-		
-		XAxis xAxis = scatterchart.getXAxis();
-		xAxis.setPosition(XAxisPosition.BOTTOM);
-		xAxis.setTextSize(10f);
-		xAxis.setTextColor(Color.BLACK);
-		xAxis.setDrawAxisLine(true);
-		xAxis.setDrawGridLines(true);
-		
-		YAxis left = scatterchart.getAxisLeft();
-		left.setDrawLabels(true); // no axis labels
-		left.setDrawAxisLine(true); // no axis line
-		left.setDrawGridLines(true); // no grid lines
-		scatterchart.getAxisRight().setEnabled(false); // no right axis
-		
-		scatterchart.setDescription(descriptionGraph);
-		scatterchart.setDescriptionTextSize(17f);
-		//scatterchart.setDescriptionPosition(690f, 50f);
-		
-		Legend legend = scatterchart.getLegend();
-		
-		legend.setEnabled(false);
-		legend.setPosition(LegendPosition.RIGHT_OF_CHART_INSIDE);
-		legend.setTextSize(12f);
-		
-		scatterchart.setData(scatterdata);
-		scatterchart.invalidate();
-		
-		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		checkCurrentData();
 		
 		legendTextView = findViewById(R.id.legend_text_view);
 		streamTextView = findViewById(R.id.stream_text_view);
@@ -129,11 +99,39 @@ public class ResultActivity extends AppCompatActivity {
 		selectAButton = findViewById(R.id.a_button);
 		selectBButton = findViewById(R.id.b_button);
 		
-		setAnalyzeButton();
 		setBackButton();
 		setPlayButton();
+		setAnalyzeButton();
 		setSelectAButton();
 		setSelectBButton();
+		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		scatterChart = findViewById(R.id.scatter_chart);
+		
+		XAxis xAxis = scatterChart.getXAxis();
+		xAxis.setPosition(XAxisPosition.BOTTOM);
+		xAxis.setTextSize(10f);
+		xAxis.setTextColor(Color.BLACK);
+		xAxis.setDrawAxisLine(true);
+		xAxis.setDrawGridLines(true);
+		
+		YAxis left = scatterChart.getAxisLeft();
+		left.setDrawLabels(true); // no axis labels
+		left.setDrawAxisLine(true); // no axis line
+		left.setDrawGridLines(true); // no grid lines
+		scatterChart.getAxisRight().setEnabled(false); // no right axis
+		
+		scatterChart.setDescription(descriptionGraph);
+		scatterChart.setDescriptionTextSize(17f);
+		//scatterchart.setDescriptionPosition(690f, 50f);
+		
+		Legend legend = scatterChart.getLegend();
+		
+		legend.setEnabled(false);
+		legend.setPosition(LegendPosition.RIGHT_OF_CHART_INSIDE);
+		legend.setTextSize(12f);
+		
+		scatterChart.setData(scatterdata);
+		scatterChart.invalidate();
 	}
 	
 	private void setBackButton() {
@@ -141,9 +139,7 @@ public class ResultActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View v) {
 				Intent intent = new Intent(getApplicationContext(), DataActivity.class);
-				intent.putExtra("pathMainActivity", pathMainActivity);
-				intent.putExtra("comeBack", true);
-				
+				intent.putExtra("current_data", currentData);
 				startActivity(intent);
 			}
 		});
@@ -154,13 +150,12 @@ public class ResultActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View v) {
 				selectedA = tempSelected;
-				System.out.print("*****SelectedA = ");
-				System.out.println(selectedA);
+				logger.info("*****SelectedA = " + selectedA);
 				
-				if (isAnalyzed == false) {
+				if (!isAnalyzed) {
 					selectAButton.setText("analyze first");
 				} else {
-					if (isAnalyzed == true) {
+					if (isAnalyzed) {
 						selectAButton.setText("select left");
 						
 						if (selectedA >= 0) {
@@ -195,6 +190,7 @@ public class ResultActivity extends AppCompatActivity {
 	
 	private void setPlayButton() {
 		playButton.setOnClickListener(new View.OnClickListener() {
+			@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 			@Override
 			public void onClick(View v) {
 				onPlay(startPlaying);
@@ -205,6 +201,7 @@ public class ResultActivity extends AppCompatActivity {
 	
 	private void setAnalyzeButton() {
 		analyzeButton.setOnClickListener(new View.OnClickListener() {
+			@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 			@Override
 			public void onClick(View v) {
 				onLineTestFunction();
@@ -213,19 +210,11 @@ public class ResultActivity extends AppCompatActivity {
 		});
 	}
 	
-	private boolean mainWelcome() {
-		//new recording, new data, temp always has sth from -> FaceActivity
-		if (getIntent().getStringExtra("pathFaceActivity") != null) {
-			if (pathMainActivity.equals(getIntent().getStringExtra("pathFaceActivity"))) {
-				return false;        //old
-			} else {
-				pathMainActivity = getIntent().getStringExtra("pathFaceActivity");
-				return true;       //new
-			}
-			//if different - can be new or first recording or new or new different recording
-			//if the same -> back
+	private void checkCurrentData() {
+		Serializable serializable = getIntent().getSerializableExtra("current_data");
+		if ((serializable != null) && (!serializable.equals(currentData))) {
+			currentData = (Data) serializable;
 		}
-		return false;
 	}
 	
 	private boolean fileExist(String pathCheck) {
@@ -233,6 +222,7 @@ public class ResultActivity extends AppCompatActivity {
 		return fileCheck.exists();
 	}
 	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private void onPlay(boolean start) {
 		if (start) {
 			startPlaying();
@@ -241,11 +231,12 @@ public class ResultActivity extends AppCompatActivity {
 		}
 	}
 	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private void startPlaying() {
 		//check if there is loaded audio file - from onSavedInstantState()
 		final byte enter_music[];
 		
-		if (fileExist(pathMainActivity))         //old
+		if (fileExist(currentData.getPath()))         //old
 		{
 			enter_music = readDataFromFile();
 		} else {
@@ -260,7 +251,7 @@ public class ResultActivity extends AppCompatActivity {
 		
 		new Thread(new Runnable() {
 			public void run() {
-				System.out.println("start playing");
+				logger.info("start playing");
 				audioTrack.write(enter_music, 0, enter_music.length);
 			}
 		}).start();
@@ -268,17 +259,16 @@ public class ResultActivity extends AppCompatActivity {
 		playButton.setText("Stop");
 	}
 	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private byte[] readDataFromFile() {
-		File enterFile = new File(pathMainActivity);
+		File enterFile = new File(currentData.getPath());  // TODO check this: currentData.getCurrentFile()
 		
 		byte[] enterMusic = new byte[(int) enterFile.length()];
 		
-		try {
-			InputStream enter_stream = new FileInputStream(enterFile);
-			enter_stream.read(enterMusic);
-			enter_stream.close();
-		} catch (Exception e) {
-			System.out.println("FILE NOT FOUND");
+		try (InputStream inputStream = new FileInputStream(enterFile)) {
+			inputStream.read(enterMusic);
+		} catch (IOException e) {
+			logger.warning(e.getMessage());
 		}
 		return enterMusic;
 	}
@@ -287,13 +277,14 @@ public class ResultActivity extends AppCompatActivity {
 		if (audioTrack != null) {
 			audioTrack.release();
 			audioTrack = null;
-			System.out.println("stop playing!!");
+			logger.info("stop playing");
 			
 			// mStartPlaying = false;
 			playButton.setText("Play");
 		}
 	}
 	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private void startAnalyzing() {
 		logger.info("*****startAnalyzing()*******");
 		
@@ -305,10 +296,11 @@ public class ResultActivity extends AppCompatActivity {
 		}
 	}
 	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private void cepstrumAll() {
 		byte[] dane;
 		
-		if (fileExist(pathMainActivity)) {
+		if (fileExist(currentData.getPath())) {
 			dane = readDataFromFile();
 		} else {
 			dane = savedEnterMusicTemp;
@@ -329,7 +321,6 @@ public class ResultActivity extends AppCompatActivity {
 		
 		logger.info("*****FFT*****");
 		for (int i = 0; i < N; ++i) {
-			
 			//part of the window
 			for (int j = 0; j < n; ++j) {
 				temp[j] = dane2[j + i * d] * oknoBlackmana[j];
@@ -341,7 +332,7 @@ public class ResultActivity extends AppCompatActivity {
 				tabl[i][j] = temp[j];
 			}
 		}
-		System.out.println("*****AFTER FFT***** ");
+		logger.info("*****AFTER FFT*****");
 		
 		//****************************************************************************************
 		
@@ -390,10 +381,15 @@ public class ResultActivity extends AppCompatActivity {
 		//SHIMMER
 		//double SH = shimmer( shim, maksy.length, f_mean );
 		SH = 0;
-		ScatterGraph(maksy, 22050, JT, SH, fMean, "Basic Frequency Line");
+		//plotScatterGraph(maksy, 22050, JT, SH, fMean, "Basic Frequency Line");
 		
 		//*******************************************************************
 		logger.info("*****END runFFT()*****");
+		Context context = getApplicationContext();
+		context.getResources();
+		ScatterGraph scatterGraph = new ScatterGraph(scatterChart, legendTextView, "Basic Frequency Line", maksy, JT, SH, fMean, 1000, tempSelected );
+		scatterGraph.plotScatterGraph();
+		
 	}
 	
 	private void cepstrumPartly() {
@@ -401,11 +397,9 @@ public class ResultActivity extends AppCompatActivity {
 		if (selectedA < 0) {
 			selectedA = 0;
 		}
-		
 		if (selectedB < 0) {
 			selectedB = maksy.length;
 		}
-		
 		if (selectedA == selectedB) {
 			selectedA = 0;
 			selectedB = maksy.length;
@@ -436,14 +430,14 @@ public class ResultActivity extends AppCompatActivity {
 		//SH = shimmer( temp_shim, temp_maksy.length, f_mean );
 		SH = 0;
 		
-		ScatterGraph(maksy, 22050, JT, SH, fMean, "Basic Frequency Line");
+		ScatterGraph scatterGraph = new ScatterGraph(scatterChart, legendTextView, "Basic Frequency Line", maksy, JT, SH, fMean, 1000, tempSelected );
+		scatterGraph.plotScatterGraph();
 		
 		logger.info("*****END cepstrumPartly()*****");
 	}
 	
 	private double[] cepstrumStreamPart(short[] part) {
 		int n = part.length;         //2 * 512 size of frame
-		int fs = 22050;                                        //sampling frequency
 		
 		double[] tabl = new double[n];
 		double[] oknoBlackmana = calculateBlackmannWindow(n);
@@ -491,11 +485,11 @@ public class ResultActivity extends AppCompatActivity {
 	private double[] frequencyMaxStreamPart(double[] tablIn) {
 		logger.info("*****START fMeanPart()*****");
 		
-		double temp_max;                        //for maximum searching
+		double tempMax;                        //for maximum searching
 		double fhigh = 400;
 		double fmin = 40;
 		int fs = 22050;
-		double tablOut[] = {0, 0};
+		double[] tablOut = {0, 0};
 		//tablOut[0] -> maksy - fmax
 		//tablOut[1] -> shim -  fmax value
 		
@@ -503,18 +497,18 @@ public class ResultActivity extends AppCompatActivity {
 		int koniec = round(fs / fmin);
 		int index = 0;                            //number of maximum array
 		
-		temp_max = tablIn[start];
+		tempMax = tablIn[start];
 		
 		for (int j = start; j < koniec; ++j) {
-			if (temp_max < tablIn[j + 1]) {
-				temp_max = tablIn[j + 1];
+			if (tempMax < tablIn[j + 1]) {
+				tempMax = tablIn[j + 1];
 				index = j + 1;
 			}
 		}
 		
 		if (index != 0) {
 			tablOut[0] = fs / index;        // 1 / ( index * 1 / ( fs ) )
-			tablOut[1] = tablIn[index];        //shim[i] = temp_max;
+			tablOut[1] = tablIn[index];        //shim[i] = tempMax;
 		} else {
 			if (index == 0) {
 				tablOut[0] = 0;
@@ -523,46 +517,14 @@ public class ResultActivity extends AppCompatActivity {
 		}
 		
 		logger.info("*****END fMeanPart()*****");
-		
 		return tablOut;
 	}
 	
-	private void cepstrumStreamSum(short[] part) {
-		//suma fmean, obliczenie jitter i shimmer
-		//oblicz pojedyńcze cepstrum
-		//może w nowym wątku ? -> zamiast
-		
-		//************************przed streamowaniem lub zmienna globalna**************************
-		
-		double frequencyMean = 0;
-		double jitter = 0;
-		double shimmer = 0;
-		
-		//*****************************przed streamowaniem******************************************
-		
-		int counter = 0;
-		
-		//***************************w miejscu streamowania audio **********************************
-		
-		double frequencyMaxTemp;
-		double frequencyMaxAmplitudeTemp;
-		double tablTemp[] = {0, 0};
-		
-		tablTemp = frequencyMaxStreamPart(cepstrumStreamPart(part));
-		frequencyMaxTemp = tablTemp[0];
-		frequencyMaxAmplitudeTemp = tablTemp[1];
-		
-		frequencyMean = (frequencyMean + frequencyMaxAmplitudeTemp) / counter;
-		counter = counter + 1;
-		
-		//******************obsługa graficzna********************************
-		
-	}
-	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private void onLineTestFunction() {
 		byte[] dane;
 		
-		if (fileExist(pathMainActivity)) {
+		if (fileExist(currentData.getPath())) {
 			dane = readDataFromFile();
 		} else {
 			dane = savedEnterMusicTemp;
@@ -594,7 +556,7 @@ public class ResultActivity extends AppCompatActivity {
 		int n = 2 * 512;                                    //size of frame
 		N = round((dane2.length - n) / d);            //number of frames
 		
-		short sendTemp[] = new short[n];
+		short[] sendTemp = new short[n];
 		
 		logger.info("*****FFT*****");
 		
@@ -667,73 +629,6 @@ public class ResultActivity extends AppCompatActivity {
 		logger.info("*****END findMax()*****");
 	}
 	
-	public void ScatterGraph(double[] tab_x, int fs, double jt, double sh, double fmean, String legenda) {
-		logger.info("*****START ScatterGraph()*****");
-		
-		ArrayList<Entry> entries = new ArrayList<Entry>();
-		
-		for (int i = 0; i < tab_x.length; ++i) {
-			entries.add(new Entry((float) tab_x[i], i));
-		}
-		
-		scatterdataset = new ScatterDataSet(entries, legenda);        //legenda - dół
-		scatterdataset.setScatterShapeSize(5);
-		scatterdataset.setScatterShape(ScatterChart.ScatterShape.CIRCLE);
-		scatterdataset.setColors(ColorTemplate.PASTEL_COLORS);
-		
-		ArrayList<String> labels = new ArrayList<String>();
-		
-		int tempInt = getIntent().getIntExtra("recordingTime", 5000);
-		//calculating of recording degree PL:"przelicza skalę trwania nagrania"
-		for (int i = 0; i < tab_x.length; ++i) {
-			labels.add(Integer.toString((int) (((double) 1 / tab_x.length) * i * tempInt)));  //* 1000 -> ms
-		}
-		
-		DecimalFormat df = new DecimalFormat();
-		df.setMaximumFractionDigits(2);
-		
-		//System.getProperty("line.separator");
-		description = "Jitter = " + df.format(jt) + " | " + "Shimmer = " + df.format(sh) + " | " + "Fmean = " + df
-				.format(fmean) + " [Hz]";
-		legendTextView.setText(description);
-		
-		logger.info("*****before SCATTERDATA*****");
-		
-		scatterdata = new ScatterData(labels, scatterdataset);
-		//labels - Oy, scatterdataset (entries)- Ox
-		
-		logger.info("*****chart -> new Runnable()*****");
-		runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				//scatterchart.setDescription( opis );
-				scatterchart.setData(scatterdata);
-				scatterchart.invalidate();
-			}
-		});
-		logger.info("*****END Runnable()*****");
-		
-		isAnalyzed = true;      //to service buttona and buttonB
-		
-		scatterchart.setHighlightEnabled(true);
-		scatterchart.setHighlightIndicatorEnabled(true);
-		scatterchart.setOnChartValueSelectedListener(new com.github.mikephil.charting.listener.OnChartValueSelectedListener() {
-			@Override
-			public void onValueSelected(Entry e, int dataSetIndex, Highlight h) {
-				logger.info("selected [x]: " + e.getXIndex());
-				tempSelected = e.getXIndex();
-				//scatterchart.setHighlightColor(Color.BLACK);
-			}
-			
-			@Override
-			public void onNothingSelected() {
-				logger.info("onNothingSelected()");
-			}
-		});
-		
-		logger.info("*****END ScatterGraph()*****");
-	}
-	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	@Override
 	public void onPause() {
@@ -741,18 +636,18 @@ public class ResultActivity extends AppCompatActivity {
 		super.onPause();
 		
 		try (FileOutputStream fos = openFileOutput("tempFile1", MODE_PRIVATE)) {
-			if (fileExist(pathMainActivity)) {
+			if (fileExist(currentData.getPath())) {
 				fos.write(readDataFromFile());
 			} else {
 				fos.write(savedEnterMusicTemp);
 			}
-		}  catch (IOException e) {
+		} catch (IOException e) {
 			logger.warning(e.getMessage());
 		}
 		
 		Bundle bundle = new Bundle();
 		bundle.putBoolean("isAnalyzed", isAnalyzed);
-		bundle.putString("pathMainActivity", pathMainActivity);
+		bundle.putString("pathMainActivity", currentData.getPath());
 		
 		Intent intent = getIntent();
 		intent.putExtras(bundle);
@@ -778,7 +673,7 @@ public class ResultActivity extends AppCompatActivity {
 				savedEnterMusicTemp = extrasBundle.getByteArray("enter_music");
 			}
 			if (extrasBundle.containsKey("pathMainActivity")) {
-				pathMainActivity = extrasBundle.getString("pathMainActivity");
+				//TODO pathMainActivity = extrasBundle.getString("pathMainActivity");
 			}
 		}
 		
@@ -806,61 +701,12 @@ public class ResultActivity extends AppCompatActivity {
 		super.onDestroy();
 		
 		logger.info("*****START onDestroy()*****");
-		if (fileExist(pathMainActivity)) {
-			File file = new File(pathMainActivity);
+		if (fileExist(currentData.getPath())) {
+			File file = new File(currentData.getPath());
 			file.delete();
 		}
 		
 		logger.info("*****END onDestroy()*****");
 	}
+	
 }
-//******************CODE UNDERLINE IS IMPORTANT FOR CODE IMPROVEMENT********************************
-/*
-    public void onSaveInstanceState(Bundle savedInstanceState) {
-        super.onSaveInstanceState(savedInstanceState);
-
-        System.out.println( "*****MainActivity onSaveInstanceState()***** " );
-
-        if(fileExist(pathMainActivity) == true)
-        {
-            savedInstanceState.putByteArray("enter_music", readDataFromFile());
-        }
-
-        else
-        {
-            savedInstanceState.putByteArray("enter_music", savedEnterMusicTemp);
-        }
-
-        savedInstanceState.putBoolean("isAnalyzed", isAnalyzed);
-        savedInstanceState.putString("pathMainActivity", pathMainActivity);
-
-        System.out.println( "*****END MainActivity onSaveInstanceState()***** " );
-
-        /*
-        try {
-                FileOutputStream fos = openFileOutput(filename, Context.MODE_PRIVATE);
-                fos.write();
-                fos.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-         */
-// }
-/*
-    public void onRestoreInstanceState(Bundle savedInstantState) {
-        super.onRestoreInstanceState(savedInstantState);
-
-        System.out.println( "*****MainActivity onRestoreInstanceState()***** " );
-
-        isAnalyzed = savedInstantState.getBoolean("isAnalyzed");
-        savedEnterMusicTemp = savedInstantState.getByteArray("enter_music");
-        pathMainActivity = savedInstantState.getString("pathMainActivity");
-
-        if(isAnalyzed == true) {
-            cepstrumAll();
-        }
-
-        System.out.println("*****END MainActivity onRestoreInstanceState()***** ");
-        //w przyszłości lepiej to zamienić na onStop() / onPause() / onStart()
-    }
-*/

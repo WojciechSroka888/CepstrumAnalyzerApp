@@ -3,8 +3,10 @@ package com.prog.gentlemens.cepstrumanalyzer;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
@@ -23,6 +25,7 @@ import com.prog.gentlemens.cepstrumanalyzer.enums.VowelName;
 import com.prog.gentlemens.cepstrumanalyzer.permission.Permission;
 import com.prog.gentlemens.cepstrumanalyzer.thread.service.DataActivityThreadService;
 
+import java.io.Serializable;
 import java.util.logging.Logger;
 
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.round;
@@ -30,11 +33,13 @@ import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.round;
 public class DataActivity extends AppCompatActivity {
 	
 	private Logger logger = Logger.getLogger(DataActivity.class.getName());
-	private DataActivityThreadService dataActivityThreadService =DataActivityThreadService.getInstance();
+	private DataActivityThreadService dataActivityThreadService = DataActivityThreadService.getInstance();
 	private Toolbar toolbar;
+	private Data currentData;
 	private int vowelNameOrdinal;
 	private boolean isRecordAllowed = true;
 	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -68,7 +73,7 @@ public class DataActivity extends AppCompatActivity {
 		toolbar = findViewById(R.id.face_toolbar);
 		setSupportActionBar(toolbar);
 		
-		setPathMainActivityWhenComingFromOtherActivity();
+		updateCurrentData();
 		Permission.setPermissions(this);
 	}
 	
@@ -78,9 +83,7 @@ public class DataActivity extends AppCompatActivity {
 			public void onClick(View v) {
 				if (dataActivityThreadService.getCurrentData() != null) {
 					if (!dataActivityThreadService.getAudioRecordState()) {
-						intent.putExtra("put_vowel", vowelNameOrdinal);
-						intent.putExtra("pathFaceActivity", dataActivityThreadService.getCurrentData().getPath());
-						intent.putExtra("put_name", dataActivityThreadService.getCurrentData().getName());
+						intent.putExtra("current_data", currentData);
 						startActivity(intent);
 					} else {
 						nextButton.setText(R.string.wait_until_record);
@@ -111,10 +114,14 @@ public class DataActivity extends AppCompatActivity {
 		});
 	}
 	
-	private void setPathMainActivityWhenComingFromOtherActivity() {
-		if (getIntent().getBooleanExtra("comeBack", false)) {
-			//pathFaceActivity = getIntent().getStringExtra("pathMainActivity");
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
+	private void updateCurrentData() {
+		Serializable serializable = getIntent().getSerializableExtra("current_data");
+		if (serializable != null) {
 			((Button) findViewById(R.id.record_button)).setText(R.string.recorded);
+			if(!currentData.equals(serializable)){
+				currentData = (Data) serializable;
+			}
 		}
 	}
 	
@@ -145,18 +152,17 @@ public class DataActivity extends AppCompatActivity {
 		}
 	}
 	
-	private Data saveData() {
+	private void initData() {
+		//TODO: how to store this value -> to send it later to ResultActivity
 		EditText nameEditText = findViewById(R.id.name_edit_text);
 		EditText surnameEditText = findViewById(R.id.surname_edit_text);
 		
-		Data currentData = new Data();
+		currentData = new Data();
 		currentData.setName(nameEditText.getText().toString(),//
 							surnameEditText.getText().toString(),//
 							VowelName.values()[vowelNameOrdinal].toString());
 		currentData.setPath(getFilesDir().toString());
 		currentData.createNewFile();
-		
-		return currentData;
 	}
 	
 	private int setRecordingTime() {
@@ -207,7 +213,8 @@ public class DataActivity extends AppCompatActivity {
 	}
 	
 	private void startRecording() {
-		dataActivityThreadService.initWriteThread(saveData());
+		initData();
+		dataActivityThreadService.initWriteThread(currentData);
 		dataActivityThreadService.start();
 		recordingTimer(setRecordingTime());
 	}
@@ -231,8 +238,8 @@ public class DataActivity extends AppCompatActivity {
 		
 		logger.info("*****FaceActivity onSaveInstanceState()*****");
 		
-		if (dataActivityThreadService.getCurrentData().getPath() != null) {
-			savedInstanceState.putString("pathFaceActivity", dataActivityThreadService.getCurrentData().getPath());
+		if (currentData != null) {
+			savedInstanceState.putSerializable("current_data", currentData);
 		}
 	}
 	
@@ -240,40 +247,6 @@ public class DataActivity extends AppCompatActivity {
 		super.onRestoreInstanceState(savedInstantState);
 		
 		logger.info("*****FaceActivity onRestoreInstanceState()*****");
-		
-		//pathFaceActivity = savedInstantState.getString("pathFaceActivity");
 	}
+	
 }
-//******************CODE UNDERLINE IS IMPORTANT FOR CODE IMPROVEMENT********************************
-/*
-    @Override
-    public void onPause()
-    {
-        System.out.println("*****FaceActivity onPause()*****");
-        super.onPause();
-
-        //*******************SAVE*********************
-
-        if (pathFaceActivity != null) {
-            SharedPreferences mFaceShared = getApplicationContext().getSharedPreferences("pathFaceActivity", MODE_PRIVATE);
-            SharedPreferences.Editor editor = mFaceShared.edit();
-            editor.putString("pathFaceActivity", pathFaceActivity);
-            editor.commit();
-        }
-    }
-
-    @Override
-    public void onResume()          //onResume() vs onRestoreInstanceState()
-    {
-        System.out.println("*****FaceActivity onResume()*****");
-        super.onResume();
-
-        //*******************RESTORE*******************
-        SharedPreferences mFaceShared = getApplicationContext().getSharedPreferences("pathFaceActivity", MODE_PRIVATE);
-        //pomimo, że nic nie zostało nagrane, SharedPreferences zwraca jakiś adres nagrania ?
-        //-> trzeba dać pomocniczą zmienną, która poinformuje, czy było coś nagrywane ? -> słabe, gdyż
-        //----> lub użyć blok onSave 0nRestore -> nie ma tego problemu
-        pathFaceActivity = mFaceShared.getString("pathFaceActivity", null);
-
-        System.out.println("*****FaceActivity onResume()*****");
-    }*/
