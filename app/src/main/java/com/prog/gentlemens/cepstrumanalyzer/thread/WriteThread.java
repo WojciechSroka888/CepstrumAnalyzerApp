@@ -2,7 +2,6 @@ package com.prog.gentlemens.cepstrumanalyzer.thread;
 
 import android.os.Build;
 import android.support.annotation.RequiresApi;
-import android.support.annotation.RequiresPermission;
 
 import com.prog.gentlemens.cepstrumanalyzer.data.Data;
 import com.prog.gentlemens.cepstrumanalyzer.message.RecordMessage;
@@ -20,10 +19,10 @@ public class WriteThread implements Runnable {
 	private Logger logger = Logger.getLogger(WriteThread.class.getName());
 	private Data currentData;
 	
-	public WriteThread (){
+	public WriteThread() {
 	}
 	
-	public WriteThread(BlockingQueue<RecordMessage> queueWithRecordThread){
+	public WriteThread(BlockingQueue<RecordMessage> queueWithRecordThread) {
 		this.queueWithRecordThread = queueWithRecordThread;
 	}
 	
@@ -33,18 +32,17 @@ public class WriteThread implements Runnable {
 	}
 	
 	//TODO validate this data
-	public void init(Data currentData){
+	public void init(Data currentData) {
 		this.currentData = currentData;
 	}
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	@Override
 	public void run() {
-		try(FileOutputStream fileOutputStream = new FileOutputStream(currentData.getCurrentFile())) {
+		try (FileOutputStream fileOutputStream = new FileOutputStream(currentData.getCurrentFile())) {
 			while (queueWithRecordThread.take().streaming()) {
-				fileOutputStream.write(shortToByteConversion(queueWithRecordThread
-						.take()
-						.getContentArray(), queueWithRecordThread
+				fileOutputStream.write(shortToByteConversion(queueWithRecordThread.take()
+				                                                                  .getContentArray(), queueWithRecordThread
 						.take()
 						.getContentArray().length));
 			}
@@ -57,8 +55,8 @@ public class WriteThread implements Runnable {
 		}
 	}
 	
-	public Data getCurrentData(){
-		return  currentData;
+	public Data getCurrentData() {
+		return currentData;
 	}
 	
 }
