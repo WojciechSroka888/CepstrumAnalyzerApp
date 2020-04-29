@@ -1,15 +1,20 @@
 package com.prog.gentlemens.cepstrumanalyzer.data;
 
+import android.os.Build;
+import android.support.annotation.RequiresApi;
+
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.Objects;
 
 //TODO check: remove this class - use File and try - with - resources
 // TODO handle exceptions
-public class Data {
+public class Data implements Serializable {
 	
-	private final String audioExtension = "_audio.pcm";
+	private static final String AUDIO_EXTENSION = "_audio.pcm";
 	private String name;
 	private String absolutePath;
 	private File currentFile;
@@ -23,7 +28,11 @@ public class Data {
 				name = name.concat(singleInformation + "_");
 			}
 		}
-		name = name + (DateFormat.getDateTimeInstance().format(new Date())) + audioExtension;
+		name = name + (DateFormat.getDateTimeInstance().format(new Date())) + AUDIO_EXTENSION;
+	}
+	
+	public void setName(String fullPath){
+		name = fullPath;
 	}
 	
 	public String getName() {
@@ -61,6 +70,26 @@ public class Data {
 	
 	public File getCurrentFile(){
 		return currentFile;
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+		Data data = (Data) o;
+		return Objects.equals(name, data.name) && Objects
+				.equals(absolutePath, data.absolutePath) && Objects.equals(currentFile, data.currentFile);
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
+	@Override
+	public int hashCode() {
+		return Objects.hash(name, absolutePath, currentFile);
 	}
 	
 }
