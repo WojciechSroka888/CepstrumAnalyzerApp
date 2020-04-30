@@ -1,8 +1,12 @@
 package com.prog.gentlemens.cepstrumanalyzer.plot;
 
+import android.graphics.Color;
 import android.widget.TextView;
 
 import com.github.mikephil.charting.charts.ScatterChart;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.ScatterData;
 import com.github.mikephil.charting.data.ScatterDataSet;
@@ -16,13 +20,14 @@ import java.util.List;
 import java.util.logging.Logger;
 
 public class ScatterGraph {
+	private static final String DESCRIPTION_GRAPH = "Basic Frequency Line";
 	private Logger logger = Logger.getLogger(ScatterGraph.class.getName());
 	private ScatterChart scatterChart;
 	private ScatterData scatterData;
 	private ScatterDataSet scatterDataSet;
 	private TextView legendTextView;
-	private String legend;
-	private String description;
+	private String label;
+	private String descriptionUp;
 	private Integer tempSelected;
 	private double[] frequencies;
 	private double jitter;
@@ -32,37 +37,42 @@ public class ScatterGraph {
 	
 	public ScatterGraph (){}
 	
-	public ScatterGraph (ScatterChart scatterChart, TextView legendTextView, String legend, double[] frequencies, double jitter, double shimmer, double meanFrequency, int recordingTime, Integer tempSelected){
-		init(scatterChart, legendTextView, legend, frequencies, jitter, shimmer, meanFrequency, recordingTime, tempSelected);
+	public ScatterGraph (ScatterChart scatterChart, TextView legendTextView, String label, double[] frequencies, double jitter, double shimmer, double meanFrequency, int recordingTime){
+		init(scatterChart, legendTextView, label, frequencies, jitter, shimmer, meanFrequency, recordingTime);
 	}
 	
-	public void init(ScatterChart scatterChart, TextView legendTextView, String legend, double[] frequencies, double jitter, double shimmer, double meanFrequency, int recordingTime, Integer tempSelected){
+	public void init(ScatterChart scatterChart, TextView legendTextView, String label, double[] frequencies, double jitter, double shimmer, double meanFrequency, int recordingTime){
 		this.scatterChart = scatterChart;
 		this.legendTextView = legendTextView;
-		this.legend = legend;
+		this.label = label;
 		this.frequencies = frequencies;
 		this.jitter = jitter;
 		this.shimmer = shimmer;
 		this.meanFrequency = meanFrequency;
 		this.recordingTime = recordingTime;
-		this.tempSelected = tempSelected;
 	}
 	
 	public void plotScatterGraph() {
+		//labels - Oy, scatterdataset (entries)- Ox
 		validateData();
+		
 		List<Entry> entries = new ArrayList<>();
 		createEntries(entries);
 		
 		List<String> labels = new ArrayList<>();
 		createLabels(labels);
-		//labels - Oy, scatterdataset (entries)- Ox
+		//TODO create proper names convenction: legend, label, description, descriptionUp
+		createLegend();
 		
-		scatterDataSet = new ScatterDataSet(entries, legend);
+		scatterDataSet = new ScatterDataSet(entries, label);
+		scatterChart.setDescription(DESCRIPTION_GRAPH);
+		scatterChart.setDescriptionTextSize(17f);
 		scatterDataSet.setScatterShapeSize(5);
 		scatterDataSet.setScatterShape(ScatterChart.ScatterShape.CIRCLE);
 		scatterDataSet.setColors(ColorTemplate.PASTEL_COLORS);
 		scatterData = new ScatterData(labels, scatterDataSet);
-		setDescription();
+		setDescriptionUp();
+		setAxis();
 		scatterChart.setHighlightEnabled(true);
 		scatterChart.setHighlightIndicatorEnabled(true);
 		scatterChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
@@ -86,6 +96,10 @@ public class ScatterGraph {
 		}).start();
 	}
 	
+	public Integer getTempSelected(){
+		return tempSelected;
+	}
+	
 	private void validateData(){
 		String message = null;
 		
@@ -95,7 +109,7 @@ public class ScatterGraph {
 		if(legendTextView == null){
 			message += " legendTextView can not be null";
 		}
-		if(legend == null){
+		if(label == null){
 			message += " legend can not be null";
 		}
 		if(frequencies == null){
@@ -120,14 +134,38 @@ public class ScatterGraph {
 		}
 	}
 	
-	private void setDescription(){
+	private void createLegend(){
+		Legend legend = scatterChart.getLegend();
+		
+		legend.setEnabled(false);
+		legend.setPosition(Legend.LegendPosition.RIGHT_OF_CHART_INSIDE);
+		legend.setTextSize(12f);
+	}
+	
+	private void setDescriptionUp(){
 		DecimalFormat decimalFormat = new DecimalFormat();
 		decimalFormat.setMaximumFractionDigits(2);
 		
-		description = "Jitter = " + decimalFormat.format(jitter) + " | " + //
-		                     "Shimmer = " + decimalFormat.format(shimmer) + " | " + //
-		                     "Fmean = " + decimalFormat.format(meanFrequency) + " [Hz]";
-		legendTextView.setText(description);
+		//TODO add type name to jitter and shimmers
+		descriptionUp = "Jitter = " + decimalFormat.format(jitter) + " | " + //
+		                "Shimmer = " + decimalFormat.format(shimmer) + " | " + //
+		                "Mean frequency = " + decimalFormat.format(meanFrequency) + " [Hz]";
+		legendTextView.setText(descriptionUp);
+	}
+	
+	private void setAxis(){
+		XAxis xAxis = scatterChart.getXAxis();
+		xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+		xAxis.setTextSize(10f);
+		xAxis.setTextColor(Color.BLACK);
+		xAxis.setDrawAxisLine(true);
+		xAxis.setDrawGridLines(true);
+		
+		YAxis left = scatterChart.getAxisLeft();
+		left.setDrawLabels(true); // no axis labels
+		left.setDrawAxisLine(true); // no axis line
+		left.setDrawGridLines(true); // no grid lines
+		scatterChart.getAxisRight().setEnabled(false); // no right axis
 	}
 	
 }
