@@ -29,38 +29,29 @@ public class ScatterGraph {
 	private String label;
 	private String descriptionUp;
 	private Integer tempSelected;
-	private double[] frequencies;
-	private double jitter;
-	private double shimmer;
-	private double meanFrequency;
-	private int recordingTime;
+
 	
 	public ScatterGraph (){}
 	
-	public ScatterGraph (ScatterChart scatterChart, TextView legendTextView, String label, double[] frequencies, double jitter, double shimmer, double meanFrequency, int recordingTime){
-		init(scatterChart, legendTextView, label, frequencies, jitter, shimmer, meanFrequency, recordingTime);
+	public ScatterGraph (ScatterChart scatterChart, TextView legendTextView, String label){
+		init(scatterChart, legendTextView, label);
 	}
 	
-	public void init(ScatterChart scatterChart, TextView legendTextView, String label, double[] frequencies, double jitter, double shimmer, double meanFrequency, int recordingTime){
+	public void init(ScatterChart scatterChart, TextView legendTextView, String label){
 		this.scatterChart = scatterChart;
 		this.legendTextView = legendTextView;
 		this.label = label;
-		this.frequencies = frequencies;
-		this.jitter = jitter;
-		this.shimmer = shimmer;
-		this.meanFrequency = meanFrequency;
-		this.recordingTime = recordingTime;
 	}
 	
-	public void plotScatterGraph() {
+	public void plotScatterGraph(int recordingTime, double jitter, double shimmer, double meanFrequency, double[] frequencies) {
 		//labels - Oy, scatterdataset (entries)- Ox
-		validateData();
+		validateData(frequencies);
 		
 		List<Entry> entries = new ArrayList<>();
-		createEntries(entries);
+		createEntries(entries, frequencies);
 		
 		List<String> labels = new ArrayList<>();
-		createLabels(labels);
+		createLabels(labels, frequencies, recordingTime);
 		//TODO create proper names convenction: legend, label, description, descriptionUp
 		createLegend();
 		
@@ -71,7 +62,7 @@ public class ScatterGraph {
 		scatterDataSet.setScatterShape(ScatterChart.ScatterShape.CIRCLE);
 		scatterDataSet.setColors(ColorTemplate.PASTEL_COLORS);
 		scatterData = new ScatterData(labels, scatterDataSet);
-		setDescriptionUp();
+		setDescriptionUp(jitter, shimmer, meanFrequency);
 		setAxis();
 		scatterChart.setHighlightEnabled(true);
 		scatterChart.setHighlightIndicatorEnabled(true);
@@ -100,7 +91,7 @@ public class ScatterGraph {
 		return tempSelected;
 	}
 	
-	private void validateData(){
+	private void validateData(double[] frequencies){
 		String message = null;
 		
 		if(scatterChart == null){
@@ -122,13 +113,13 @@ public class ScatterGraph {
 		}
 	}
 	
-	private void createEntries(List<Entry> entries){
+	private void createEntries(List<Entry> entries, double[] frequencies){
 		for (int i = 0; i < frequencies.length; ++i) {
 			entries.add(new Entry((float) frequencies[i], i));
 		}
 	}
 	
-	private void createLabels(List<String> labels){
+	private void createLabels(List<String> labels, double[] frequencies, int recordingTime){
 		for (int i = 0; i < frequencies.length; ++i) {
 			labels.add(Integer.toString((int) (((double) 1 / frequencies.length) * i * recordingTime)));  //* 1000 -> ms
 		}
@@ -142,7 +133,7 @@ public class ScatterGraph {
 		legend.setTextSize(12f);
 	}
 	
-	private void setDescriptionUp(){
+	private void setDescriptionUp(Double jitter, Double shimmer, Double meanFrequency){
 		DecimalFormat decimalFormat = new DecimalFormat();
 		decimalFormat.setMaximumFractionDigits(2);
 		

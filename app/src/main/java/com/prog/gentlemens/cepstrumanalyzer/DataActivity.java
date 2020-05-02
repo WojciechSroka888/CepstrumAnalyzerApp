@@ -25,19 +25,20 @@ import com.prog.gentlemens.cepstrumanalyzer.enums.VowelName;
 import com.prog.gentlemens.cepstrumanalyzer.permission.Permission;
 import com.prog.gentlemens.cepstrumanalyzer.thread.service.DataActivityThreadService;
 
-import java.io.Serializable;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.logging.Logger;
 
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.round;
 
 public class DataActivity extends AppCompatActivity {
-	
 	private Logger logger = Logger.getLogger(DataActivity.class.getName());
-	private DataActivityThreadService dataActivityThreadService = DataActivityThreadService.getInstance();
+	private DataActivityThreadService dataActivityThreadService;
 	private Toolbar toolbar;
 	private Data currentData;
 	private int vowelNameOrdinal;
 	private boolean isRecordAllowed = true;
+	private int recordingTime;
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	@Override
@@ -73,7 +74,8 @@ public class DataActivity extends AppCompatActivity {
 		toolbar = findViewById(R.id.face_toolbar);
 		setSupportActionBar(toolbar);
 		
-		updateCurrentData();
+		dataActivityThreadService = DataActivityThreadService.getInstance();
+		//updateCurrentData();
 		Permission.setPermissions(this);
 	}
 	
@@ -81,9 +83,9 @@ public class DataActivity extends AppCompatActivity {
 		nextButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				if (dataActivityThreadService.getCurrentData() != null) {
+				if (currentData != null) {
 					if (!dataActivityThreadService.getAudioRecordState()) {
-						intent.putExtra("current_data", currentData);
+						intent.putExtra("currentData", currentData);
 						startActivity(intent);
 					} else {
 						nextButton.setText(R.string.wait_until_record);
@@ -114,17 +116,16 @@ public class DataActivity extends AppCompatActivity {
 		});
 	}
 	
+	/*
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private void updateCurrentData() {
-		Serializable serializable = getIntent().getSerializableExtra("current_data");
+		Serializable serializable = getIntent().getSerializableExtra("currentData");
 		if (serializable != null) {
 			((Button) findViewById(R.id.record_button)).setText(R.string.recorded);
-			if(!currentData.equals(serializable)){
-				currentData = (Data) serializable;
-			}
+			currentData = (Data) serializable;
 		}
 	}
-	
+	*/
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		toolbar.inflateMenu(R.menu.three_dot_menu);
@@ -153,19 +154,19 @@ public class DataActivity extends AppCompatActivity {
 	}
 	
 	private void initData() {
-		//TODO: how to store this value -> to send it later to ResultActivity
 		EditText nameEditText = findViewById(R.id.name_edit_text);
 		EditText surnameEditText = findViewById(R.id.surname_edit_text);
 		
 		currentData = new Data();
 		currentData.setName(nameEditText.getText().toString(),//
-							surnameEditText.getText().toString(),//
-							VowelName.values()[vowelNameOrdinal].toString());
+				surnameEditText.getText().toString(),//
+				VowelName.values()[vowelNameOrdinal].toString());
 		currentData.setPath(getFilesDir().toString());
+		currentData.setDuration(recordingTime);
 		currentData.createNewFile();
 	}
 	
-	private int setRecordingTime() {
+	private void setRecordingTime() {
 		EditText recordingTimeEditText = findViewById(R.id.recording_time_edit_text);
 		final int defaultTime = 5000;
 		final int maxTime = 30000;
@@ -173,16 +174,18 @@ public class DataActivity extends AppCompatActivity {
 		
 		try {
 			functionTemp = Integer.parseInt(recordingTimeEditText.getText().toString());
-			if(functionTemp <= 0){
-				return defaultTime;
-			}else if(functionTemp > maxTime){
-				return maxTime;
+			if (functionTemp <= 0) {
+				recordingTime = defaultTime;
+			} else {
+				if (functionTemp > maxTime) {
+					recordingTime = maxTime;
+				}
 			}
 		} catch (NumberFormatException e) {
 			logger.warning("Could not parse " + e);
 		}
 		
-		return functionTemp;
+		recordingTime = functionTemp;
 	}
 	
 	private void recordingTimer(final long millisInFuture) {
@@ -213,10 +216,11 @@ public class DataActivity extends AppCompatActivity {
 	}
 	
 	private void startRecording() {
+		setRecordingTime();
 		initData();
 		dataActivityThreadService.initWriteThread(currentData);
 		dataActivityThreadService.start();
-		recordingTimer(setRecordingTime());
+		recordingTimer(recordingTime);
 	}
 	
 	public void openWebPage(String url) {
@@ -233,20 +237,53 @@ public class DataActivity extends AppCompatActivity {
 		}
 	}
 	
-	public void onSaveInstanceState(Bundle savedInstanceState) {
-		super.onSaveInstanceState(savedInstanceState);
+	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
+	@Override
+	public void onResume() {
+		super.onResume();
 		
-		logger.info("*****FaceActivity onSaveInstanceState()*****");
+		Intent intent = getIntent();
+		Bundle extrasBundle = intent.getExtras();
 		
-		if (currentData != null) {
-			savedInstanceState.putSerializable("current_data", currentData);
+		if (extrasBundle != null && !extrasBundle.isEmpty() && extrasBundle.containsKey("currentData")) {
+			currentData = (Data) extrasBundle.getSerializable("currentData");
 		}
 	}
 	
-	public void onRestoreInstanceState(Bundle savedInstantState) {
-		super.onRestoreInstanceState(savedInstantState);
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
+	@Override
+	public void onPause() {
+		super.onPause();
+		Bundle bundle = new Bundle();
+		bundle.putSerializable("currentData", currentData);
 		
-		logger.info("*****FaceActivity onRestoreInstanceState()*****");
+		Intent intent = getIntent();
+		intent.putExtras(bundle);
+	}
+	
+	@Override
+	public void onStop() {
+		super.onStop();
+		Bundle bundle = new Bundle();
+		bundle.putSerializable("currentData", currentData);
+		
+		Intent intent = getIntent();
+		intent.putExtras(bundle);
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.O)
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		
+		if (isFinishing() && currentData != null && currentData.getCurrentFile() != null) {
+			try {
+				Files.delete(currentData.getCurrentFile().toPath());
+			} catch (IOException e) {
+				logger.warning(e.getMessage());
+			}
+		}
 	}
 	
 }

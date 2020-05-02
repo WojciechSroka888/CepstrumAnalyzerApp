@@ -4,20 +4,22 @@ import android.os.Build;
 import android.support.annotation.RequiresApi;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Objects;
+import java.util.logging.Logger;
 
-//TODO check: remove this class - use File and try - with - resources
-// TODO handle exceptions
 public class Data implements Serializable {
-	
+	private static final Logger logger = Logger.getLogger(Data.class.getName());
 	private static final String AUDIO_EXTENSION = "_audio.pcm";
 	private String name;
 	private String absolutePath;
 	private File currentFile;
+	private int duration;
 	
 	public void setName(String... information) {
 		if (name == null) {
@@ -31,12 +33,23 @@ public class Data implements Serializable {
 		name = name + (DateFormat.getDateTimeInstance().format(new Date())) + AUDIO_EXTENSION;
 	}
 	
-	public void setName(String fullPath){
+	public void setName(String fullPath) {
 		name = fullPath;
 	}
 	
 	public String getName() {
 		return name;
+	}
+	
+	public void setDuration(int duration) {
+		if(duration <= 0){
+			throw new IllegalArgumentException("duration can not be less then zero");
+		}
+		this.duration = duration;
+	}
+	
+	public int getDuration() {
+		return duration;
 	}
 	
 	public void setPath(String absolutePath) {
@@ -51,7 +64,7 @@ public class Data implements Serializable {
 	
 	public void createNewFile() {
 		if (name == null || absolutePath == null) {
-			// exception and information
+			throw new IllegalArgumentException("name and absolutePath can not be null");
 		}
 		
 		currentFile = new File(absolutePath, name);
@@ -59,17 +72,30 @@ public class Data implements Serializable {
 		
 		try {
 			result = currentFile.createNewFile();
-		} catch(IOException e){
-			// TODO handle exeption
-		} finally {
-			if(!result){
-				// TODO throw exception
-			}
+		} catch (IOException e) {
+			logger.warning(e.getMessage());
+		}
+		if (!result) {
+			throw new IllegalArgumentException("file name already exists");
 		}
 	}
 	
-	public File getCurrentFile(){
+	public File getCurrentFile() {
 		return currentFile;
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
+	public byte[] returnByteData() {
+		byte[] resultByteArray = new byte[(int) getCurrentFile().length()];
+		
+		try (InputStream inputStream = new FileInputStream(getCurrentFile())) {
+			if (inputStream.read(resultByteArray) == -1) {
+				return resultByteArray;
+			}
+		} catch (IOException e) {
+			logger.warning(e.getMessage());
+		}
+		return resultByteArray;
 	}
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -82,8 +108,8 @@ public class Data implements Serializable {
 			return false;
 		}
 		Data data = (Data) o;
-		return Objects.equals(name, data.name) && Objects
-				.equals(absolutePath, data.absolutePath) && Objects.equals(currentFile, data.currentFile);
+		return Objects.equals(name, data.name) && Objects.equals(absolutePath, data.absolutePath) && Objects
+				.equals(currentFile, data.currentFile);
 	}
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)

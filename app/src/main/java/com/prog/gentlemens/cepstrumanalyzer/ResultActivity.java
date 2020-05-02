@@ -1,9 +1,6 @@
 package com.prog.gentlemens.cepstrumanalyzer;
 
 import android.content.Intent;
-import android.media.AudioFormat;
-import android.media.AudioManager;
-import android.media.AudioTrack;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.RequiresApi;
@@ -15,24 +12,21 @@ import android.widget.TextView;
 import com.github.mikephil.charting.charts.ScatterChart;
 import com.prog.gentlemens.cepstrumanalyzer.data.Data;
 import com.prog.gentlemens.cepstrumanalyzer.math.FFT;
+import com.prog.gentlemens.cepstrumanalyzer.media.PlayMedia;
 import com.prog.gentlemens.cepstrumanalyzer.plot.ScatterGraph;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.Serializable;
+import java.nio.file.Files;
 import java.util.logging.Logger;
 
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.arithmeticFrequencyAverage;
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.byteToShortConversion;
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.calculateBlackmannWindow;
+import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.calculateJitter;
+import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.calculateShimmer;
 import static com.prog.gentlemens.cepstrumanalyzer.math.MathOperations.round;
 
 public class ResultActivity extends AppCompatActivity {
-	
 	private Logger logger = Logger.getLogger(ResultActivity.class.getName());
 	private Data currentData;
 	private Button playButton;
@@ -42,27 +36,15 @@ public class ResultActivity extends AppCompatActivity {
 	private Button backButton;
 	
 	private TextView legendTextView;
-	private TextView streamTextView;
-	
-	private boolean startPlaying = true;
-	
-	private AudioTrack audioTrack = null;
+	private PlayMedia playMedia;
+	private ScatterChart scatterChart;
+	private ScatterGraph scatterGraph;
 	
 	private Integer selectedA;
 	private Integer selectedB;
-	
-	private double[] maksy;
-	private double[] shim;
-	private int N;
-	private double JT;
-	private double SH;
-	private double fMean;
-	
+	private double[] frequencies;
+	private double[] amplitudes;
 	private boolean isAnalyzed = false;
-	private byte[] savedEnterMusicTemp = null;
-	
-	private ScatterChart scatterChart;
-	private ScatterGraph scatterGraph;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +52,6 @@ public class ResultActivity extends AppCompatActivity {
 		setContentView(R.layout.activity_main);
 		
 		legendTextView = findViewById(R.id.legend_text_view);
-		streamTextView = findViewById(R.id.stream_text_view);
 		backButton = findViewById(R.id.back_button);
 		playButton = findViewById(R.id.play_button);
 		analyzeButton = findViewById(R.id.analyze_button);
@@ -83,8 +64,10 @@ public class ResultActivity extends AppCompatActivity {
 		setAnalyzeButton();
 		setSelectAButton();
 		setSelectBButton();
-		
-		checkCurrentData();
+		playMedia = new PlayMedia(this);
+		scatterGraph = new ScatterGraph(scatterChart,//
+				legendTextView, //
+				"Basic Frequency Line");
 	}
 	
 	private void setBackButton() {
@@ -92,7 +75,6 @@ public class ResultActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View v) {
 				Intent intent = new Intent(getApplicationContext(), DataActivity.class);
-				intent.putExtra("current_data", currentData);
 				startActivity(intent);
 			}
 		});
@@ -142,8 +124,11 @@ public class ResultActivity extends AppCompatActivity {
 			@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 			@Override
 			public void onClick(View v) {
-				onPlay(startPlaying);
-				startPlaying = !startPlaying;
+				if (playMedia.isPlaying()) {
+					stopPlaying();
+				} else {
+					startPlaying();
+				}
 			}
 		});
 	}
@@ -153,75 +138,28 @@ public class ResultActivity extends AppCompatActivity {
 			@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 			@Override
 			public void onClick(View v) {
-				onLineTestFunction();
 				startAnalyzing();
-				isAnalyzed = true;
+				isAnalyzed = true; // TODO check use of isAnalyzed
 			}
 		});
 	}
-	
-	private void checkCurrentData() {
-		Serializable serializable = getIntent().getSerializableExtra("current_data");
+	/*
+	private void updateCurrentData() {
+		Serializable serializable = getIntent().getSerializableExtra("currentData");
 		if ((serializable != null) && (!serializable.equals(currentData))) {
 			currentData = (Data) serializable;
 		}
-	}
-	
-	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
-	private void onPlay(boolean start) {
-		if (start) {
-			startPlaying();
-		} else {
-			stopPlaying();
-		}
-	}
+	}*/
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private void startPlaying() {
-		final byte[] musicFile;
-		
-		if (currentData.getCurrentFile() != null) {
-			musicFile = readDataFromFile();
-		} else {
-			musicFile = savedEnterMusicTemp;  //from saved temp, after inverting
-		}
-		
-		int minBufferSize = AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
-		
-		audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 22050, AudioFormat.CHANNEL_CONFIGURATION_MONO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize, AudioTrack.MODE_STREAM);
-		audioTrack.play();
-		
-		new Thread(new Runnable() {
-			public void run() {
-				logger.info("start playing");
-				audioTrack.write(musicFile, 0, musicFile.length);
-			}
-		}).start();
-		
-		playButton.setText("Stop");
-	}
-	
-	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
-	private byte[] readDataFromFile() {
-		byte[] enterMusic = new byte[(int) currentData.getCurrentFile().length()];
-		
-		try (InputStream inputStream = new FileInputStream(currentData.getCurrentFile())) {
-			inputStream.read(enterMusic);
-		} catch (IOException e) {
-			logger.warning(e.getMessage());
-		}
-		return enterMusic;
+		playButton.setText("stop");
+		playMedia.startPlaying(currentData.returnByteData());
 	}
 	
 	private void stopPlaying() {
-		if (audioTrack != null) {
-			audioTrack.release();
-			audioTrack = null;
-			logger.info("stop playing");
-			
-			// mStartPlaying = false;
-			playButton.setText("Play");
-		}
+		playButton.setText("play");
+		playMedia.stopPlaying();
 	}
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -238,32 +176,23 @@ public class ResultActivity extends AppCompatActivity {
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private void cepstrumAll() {
-		byte[] dane;
+		byte[] byteData = currentData.returnByteData();
+		short[] shortData = byteToShortConversion(byteData);
 		
-		if (currentData.getCurrentFile() != null) {
-			dane = readDataFromFile();
-		} else {
-			dane = savedEnterMusicTemp;
-		}
-		
-		short[] dane2 = new short[dane.length / 2];
-		dane2 = byteToShortConversion(dane);
-		
-		int d = 64;                                            //step shift window
-		int n = 2 * 512;                                    //size of frame
-		N = round((dane2.length - n) / d);            //number of frames
-		int fs = 22050;                                        //sampling frequency
+		final int d = 64;                                            //step shift window
+		final int n = 2 * 512;                                    //size of frame
+		final int N = round((shortData.length - n) / d);            //number of frames
+		final int fs = 22050;                                        //sampling frequency
 		
 		double[][] tabl = new double[N][n];
 		double[] temp = new double[n];
-		
-		double[] oknoBlackmana = calculateBlackmannWindow(n);
+		double[] blackmannWindow = calculateBlackmannWindow(n);
 		
 		logger.info("*****FFT*****");
 		for (int i = 0; i < N; ++i) {
 			//part of the window
 			for (int j = 0; j < n; ++j) {
-				temp[j] = dane2[j + i * d] * oknoBlackmana[j];
+				temp[j] = shortData[j + i * d] * blackmannWindow[j];
 			}
 			
 			FFT.RealFT(temp, 1);
@@ -307,40 +236,46 @@ public class ResultActivity extends AppCompatActivity {
 		
 		//****************************************************************************************
 		
-		maksy = new double[N];         //? frequency value
-		shim = new double[N];          //? amplitude value
+		frequencies = new double[N];
+		amplitudes = new double[N];
 		
-		findMax(maksy, shim, tabl, N, n, fs);
+		findMax(frequencies, amplitudes, tabl, N, fs);
 		
-		//fmean
-		fMean = arithmeticFrequencyAverage(maksy);
-		
-		//JITTER
-		//double JT = jitter( maksy, f_mean );
-		JT = 0;
-		//SHIMMER
-		//double SH = shimmer( shim, maksy.length, f_mean );
-		SH = 0;
-		//plotScatterGraph(maksy, 22050, JT, SH, fMean, "Basic Frequency Line");
-		
-		//*******************************************************************
-		logger.info("*****END runFFT()*****");
-		
-		scatterGraph = new ScatterGraph(scatterChart, legendTextView, "Basic Frequency Line", maksy, JT, SH, fMean, 1000);
-		scatterGraph.plotScatterGraph();
+		scatterGraph.plotScatterGraph(currentData.getDuration(),//
+				calculateJitter(frequencies),//
+				calculateShimmer(amplitudes),//
+				arithmeticFrequencyAverage(frequencies), //
+				frequencies);
 	}
 	
 	private void cepstrumPartly() {
-		logger.info("*****START cepstrumPartly()*****");
+		setSelectedValues();
+		
+		double[] partOfFrequencies = new double[selectedB - selectedA];
+		double[] partOfAmplitudes = new double[selectedB - selectedA];
+		
+		for (int i = 0; i < selectedB - selectedA; ++i) {
+			partOfFrequencies[i] = this.frequencies[i + selectedA];
+			partOfAmplitudes[i] = this.amplitudes[i + selectedA];
+		}
+		
+		scatterGraph.plotScatterGraph(currentData.getDuration(),//
+				calculateJitter(partOfFrequencies),//
+				calculateShimmer(partOfAmplitudes),//
+				arithmeticFrequencyAverage(partOfFrequencies),//
+				this.frequencies);
+	}
+	
+	private void setSelectedValues() {
 		if (selectedA == null) {
 			selectedA = 0;
 		}
 		if (selectedB == null) {
-			selectedB = maksy.length;
+			selectedB = frequencies.length;
 		}
 		if (selectedA.equals(selectedB)) {
 			selectedA = 0;
-			selectedB = maksy.length;
+			selectedB = frequencies.length;
 		} else {
 			if (selectedA > selectedB) {
 				int temp = selectedA;
@@ -349,255 +284,47 @@ public class ResultActivity extends AppCompatActivity {
 				selectedB = temp;
 			}
 		}
-		
-		double[] temp_maksy = new double[selectedB - selectedA];
-		double[] temp_shim = new double[selectedB - selectedA];
-		
-		for (int i = 0; i < selectedB - selectedA; ++i) {
-			temp_maksy[i] = maksy[i + selectedA];
-			temp_shim[i] = shim[i + selectedA];
-		}
-		//fmean
-		fMean = arithmeticFrequencyAverage(temp_maksy);
-		
-		//JITTER
-		//JT = jitter( temp_maksy, f_mean );
-		JT = 0;
-		
-		//SHIMMER
-		//SH = shimmer( temp_shim, temp_maksy.length, f_mean );
-		SH = 0;
-		
-		scatterGraph = new ScatterGraph(scatterChart, legendTextView, "Basic Frequency Line", maksy, JT, SH, fMean, 1000);
-		scatterGraph.plotScatterGraph();
-		
-		logger.info("*****END cepstrumPartly()*****");
 	}
 	
-	private double[] cepstrumStreamPart(short[] part) {
-		int n = part.length;         //2 * 512 size of frame
+	private void findMax(double[] frequencies, double[] amplitudes, double[][] tabl, int N, final int samplingFrequency) {
+		double tempMax;                    //looking for maximum
+		final double maxFrequency = 400;
+		final double minFrequency = 40;
 		
-		double[] tabl = new double[n];
-		double[] oknoBlackmana = calculateBlackmannWindow(n);
-		
-		logger.info("*****FFT*****");
-		//window application
-		for (int j = 0; j < n; ++j) {
-			tabl[j] = part[j] * oknoBlackmana[j];
-		}
-		
-		//Fourier transform
-		FFT.RealFT(tabl, 1);
-		
-		logger.info("*****AFTER FFT*****");
-		//****************************************************************************************
-		
-		logger.info("*****LN i ABS*****");
-		for (int j = 0; j < n; j = j + 2) {
-			if (tabl[j] == 0)                    //because log(0) = NaN
-			{
-				tabl[j + 1] = 0;                    //we need to 0 imaginary part
-				continue;
-			}
-			
-			tabl[j] = Math.sqrt(tabl[j] * tabl[j] + tabl[j + 1] * tabl[j + 1]);
-			tabl[j + 1] = 0;
-			
-			tabl[j] = Math.log(tabl[j]);
-		}
-		logger.info("*****AFTER LN i ABS*****");
-		
-		logger.info("*****IFFT*****");
-		FFT.RealFT(tabl, -1);
-		
-		tabl[tabl.length - 1] = 0;
-		tabl[tabl.length - 2] = 0;
-		
-		tabl[0] = 0;
-		tabl[1] = 0;
-		logger.info("*****AFTER IFFT*****");
-		logger.info("*****END runFFT()*****");
-		return tabl;
-	}
-	
-	private double[] frequencyMaxStreamPart(double[] tablIn) {
-		logger.info("*****START fMeanPart()*****");
-		
-		double tempMax;                        //for maximum searching
-		double fhigh = 400;
-		double fmin = 40;
-		int fs = 22050;
-		double[] tablOut = {0, 0};
-		//tablOut[0] -> maksy - fmax
-		//tablOut[1] -> shim -  fmax value
-		
-		int start = round(fs / fhigh);        //providing start from appropraite index
-		int koniec = round(fs / fmin);
-		int index = 0;                            //number of maximum array
-		
-		tempMax = tablIn[start];
-		
-		for (int j = start; j < koniec; ++j) {
-			if (tempMax < tablIn[j + 1]) {
-				tempMax = tablIn[j + 1];
-				index = j + 1;
-			}
-		}
-		
-		if (index != 0) {
-			tablOut[0] = fs / index;        // 1 / ( index * 1 / ( fs ) )
-			tablOut[1] = tablIn[index];        //shim[i] = tempMax;
-		} else {
-			if (index == 0) {
-				tablOut[0] = 0;
-				tablOut[1] = 0;
-			}
-		}
-		
-		logger.info("*****END fMeanPart()*****");
-		return tablOut;
-	}
-	
-	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
-	private void onLineTestFunction() {
-		byte[] dane;
-		
-		if (currentData.getCurrentFile() != null) {
-			dane = readDataFromFile();
-		} else {
-			dane = savedEnterMusicTemp;
-		}
-		
-		short[] dane2 = byteToShortConversion(dane);
-		
-		//BEFORE STREAMING
-		
-		//************************before streaming or global value globalna**************************
-		
-		double frequencyMean = 0;
-		double jitter = 0;
-		double shimmer = 0;
-		
-		//*****************************before streaming******************************************
-		
-		int counter = 0;
-		
-		//STREAMING
-		
-		//***************************in place of streaming audio **********************************
-		
-		double frequencyMaxTemp;
-		double frequencyMaxAmplitudeTemp;
-		double tablTemp[] = {0, 0};
-		
-		int d = 64;                                            //shift step
-		int n = 2 * 512;                                    //size of frame
-		N = round((dane2.length - n) / d);            //number of frames
-		
-		short[] sendTemp = new short[n];
-		
-		logger.info("*****FFT*****");
-		
-		for (int i = 0; i < N; ++i, ++counter) {
-			//wycinek
-			for (int j = 0; j < n; ++j) {
-				sendTemp[j] = dane2[j + i * d];
-			}
-			
-			tablTemp = frequencyMaxStreamPart(cepstrumStreamPart(sendTemp));
-			frequencyMaxTemp = tablTemp[0];
-			frequencyMaxAmplitudeTemp = tablTemp[1];
-			
-			if (frequencyMaxTemp == 0) {
-				counter = counter - 1;
-				continue;
-			}
-			
-			frequencyMean = frequencyMean + frequencyMaxTemp;
-			
-			streamTextView.setText(Integer.toString((int) (frequencyMaxTemp)));
-			
-			selectBButton.setText(Integer.toString((int) (frequencyMean / counter)));
-			
-		}
-		
-		frequencyMean = frequencyMean / counter;
-		
-		
-		logger.info("*****END onLineTestFunction()*****");
-		//******************graphics********************************
-	}
-	
-	private void findMax(double[] maksy, double[] shim, double[][] tabl, int N, int n, int fs) {
-		logger.info("*****START findMax()*****");
-		
-		double temp_max = 0;                    //looking for maximum
-		double fhigh = 400;
-		double fmin = 40;
-		
-		int start = round(fs / fhigh);        //appropraite starting index
-		int koniec = round(fs / fmin);
+		int start = round(samplingFrequency / maxFrequency);        //appropriate starting index
+		int end = round(samplingFrequency / minFrequency);
 		int index;                                 //number of maximum array
 		
 		for (int i = 0; i < N; ++i) {
 			index = 0;                        //when only 0 instead of index = start
 			
-			temp_max = tabl[i][start];
+			tempMax = tabl[i][start];
 			
-			for (int j = start; j < koniec; ++j) {
-				if (temp_max < tabl[i][j + 1]) {
-					temp_max = tabl[i][j + 1];
+			for (int j = start; j < end; ++j) {
+				if (tempMax < tabl[i][j + 1]) {
+					tempMax = tabl[i][j + 1];
 					index = j + 1;
 				}
 			}
 			
 			if (index != 0) {
-				maksy[i] = fs / index;        // 1 / ( index * 1 / ( fs ) )
-				shim[i] = tabl[i][index];    //shim[i] = temp_max;
+				frequencies[i] = samplingFrequency / index;        // 1 / ( index * 1 / ( samplingFrequency ) )
+				amplitudes[i] = tabl[i][index];    //amplitudes[i] = tempMax;
 			} else {
 				if (index == 0) {
-					maksy[i] = 0;
-					shim[i] = 0;
+					frequencies[i] = 0;
+					amplitudes[i] = 0;
 				}
 			}
 			
-			//System.out.println( index + '-' + maksy[i] + '-' + temp_max);
+			logger.info(index + "-" + frequencies[i] + "-" + tempMax);
 		}
-		//roundJ(3.44);
-		logger.info("*****END findMax()*****");
 	}
+	
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	@Override
-	public void onPause() {
-		logger.info("*****MainActivity onPause()*****");
-		super.onPause();
-		
-		try (FileOutputStream fos = openFileOutput("tempFile1", MODE_PRIVATE)) {
-			if (currentData.getCurrentFile() != null) {
-				fos.write(readDataFromFile());
-			} else {
-				fos.write(savedEnterMusicTemp);
-			}
-		} catch (IOException e) {
-			logger.warning(e.getMessage());
-		}
-		
-		Bundle bundle = new Bundle();
-		bundle.putBoolean("isAnalyzed", isAnalyzed);
-		bundle.putString("pathMainActivity", currentData.getPath());
-		
-		Intent intent = getIntent();
-		intent.putExtras(bundle);
-		
-		logger.info("*****MainActivity onPause()*****");
-	}
-	
-	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
-	@Override
-	public void onResume()          //onResume() vs onRestoreInstanceState()
-	{
-		logger.info("*****MainActivity onResume()*****");
+	public void onResume() {
 		super.onResume();
 		
 		Intent intent = getIntent();
@@ -607,44 +334,49 @@ public class ResultActivity extends AppCompatActivity {
 			if (extrasBundle.containsKey("isAnalyzed")) {
 				isAnalyzed = extrasBundle.getBoolean("isAnalyzed");
 			}
-			if (extrasBundle.containsKey("enter_music")) {
-				savedEnterMusicTemp = extrasBundle.getByteArray("enter_music");
-			}
-			if (extrasBundle.containsKey("pathMainActivity")) {
-				//TODO pathMainActivity = extrasBundle.getString("pathMainActivity");
+			if (extrasBundle.containsKey("currentData")) {
+				currentData = (Data) extrasBundle.getSerializable("currentData");
 			}
 		}
-		/*
-		if (fileExist(getFilesDir() + "/tempFile1")) {
-			File file = new File(getFilesDir() + "/tempFile1");
-			
-			int size = (int) file.length();
-			byte[] bytes = new byte[size];
-			try (BufferedInputStream buf = new BufferedInputStream(new FileInputStream(file))) {
-				buf.read(bytes, 0, bytes.length);
-				savedEnterMusicTemp = bytes;
-				if (isAnalyzed) {
-					cepstrumAll();
-				}
-			} catch (IOException e) {
-				logger.warning(e.getMessage());
-			}
-		}*/
-		
-		logger.info("*****MainActivity onResume()*****");
 	}
 	
+	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
+	@Override
+	public void onPause() {
+		super.onPause();
+		
+		Bundle bundle = new Bundle();
+		bundle.putBoolean("isAnalyzed", isAnalyzed);
+		bundle.putSerializable("currentData", currentData);
+		
+		Intent intent = getIntent();
+		intent.putExtras(bundle);
+	}
+	
+	@Override
+	public void onStop() {
+		super.onStop();
+		
+		Bundle bundle = new Bundle();
+		bundle.putBoolean("isAnalyzed", isAnalyzed);
+		bundle.putSerializable("currentData", currentData);
+		
+		Intent intent = getIntent();
+		intent.putExtras(bundle);
+	}
+	
+	@RequiresApi(api = Build.VERSION_CODES.O)
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 		
-		logger.info("*****START onDestroy()*****");
-		if (currentData.getCurrentFile() != null) {
-			File file = new File(currentData.getPath());
-			file.delete();
+		if (isFinishing() && currentData != null && currentData.getCurrentFile() != null) {
+			try {
+				Files.delete(currentData.getCurrentFile().toPath());
+			} catch (IOException e) {
+				logger.warning(e.getMessage());
+			}
 		}
-		
-		logger.info("*****END onDestroy()*****");
 	}
 	
 }
