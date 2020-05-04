@@ -30,7 +30,8 @@ public class RecordThread implements Runnable {
 		}
 		try {
 			while (audioRecord.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING) {
-				int numberShortsRead = audioRecord.read(recordArray, 0, recordConfiguration.getBufferElementsRec() * recordConfiguration.getBytesPerElement());
+				int numberShortsRead = audioRecord.read(recordArray, 0, recordConfiguration.getBufferElementsRec() * recordConfiguration
+						.getBytesPerElement());
 				if (numberShortsRead > 0) {
 					queueToSendRecordData.put(new RecordMessage(true, recordArray));
 				}
@@ -53,7 +54,7 @@ public class RecordThread implements Runnable {
 		}
 	}
 	
-	public void init(RecordConfiguration recordConfiguration){
+	public void init(RecordConfiguration recordConfiguration) {
 		this.recordConfiguration = recordConfiguration;
 	}
 	
@@ -74,13 +75,13 @@ public class RecordThread implements Runnable {
 					recordConfiguration.getChannelConfig(), //
 					recordConfiguration.getAudioFormat(), //
 					recordConfiguration.getBufferElementsRec() * recordConfiguration.getBytesPerElement());
-		}catch(IllegalArgumentException e){
-			if(!isDefault){
+		} catch (IllegalArgumentException e) {
+			if (!isDefault) {
 				logger.warning(e.getMessage() + " -> unable to initialized AudioRecord, trying with default values");
 				recordConfiguration = null;
 				// try initialize with default values
 				return initialize();
-			}else{
+			} else {
 				return false;
 			}
 		}

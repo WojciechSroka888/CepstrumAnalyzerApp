@@ -19,6 +19,7 @@ public class ResultActivityTest {
 		final String fullPath = "/data/data/com.prog.gentlemens.cepstrumanalyzer/files/_A_1 lip 2019 12:01:28_audio.pcm";
 		Data data = new Data();
 		data.setPath(fullPath);
+		data.setDuration(5000);
 		Context appContext = InstrumentationRegistry.getTargetContext();
 		Intent intent = new Intent(appContext, ResultActivity.class);
 		intent.putExtra("current_data", data);

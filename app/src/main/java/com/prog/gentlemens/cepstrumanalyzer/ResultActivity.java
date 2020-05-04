@@ -75,6 +75,7 @@ public class ResultActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View v) {
 				Intent intent = new Intent(getApplicationContext(), DataActivity.class);
+				intent.putExtra("currentData", currentData);
 				startActivity(intent);
 			}
 		});
@@ -139,17 +140,9 @@ public class ResultActivity extends AppCompatActivity {
 			@Override
 			public void onClick(View v) {
 				startAnalyzing();
-				isAnalyzed = true; // TODO check use of isAnalyzed
 			}
 		});
 	}
-	/*
-	private void updateCurrentData() {
-		Serializable serializable = getIntent().getSerializableExtra("currentData");
-		if ((serializable != null) && (!serializable.equals(currentData))) {
-			currentData = (Data) serializable;
-		}
-	}*/
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	private void startPlaying() {
@@ -280,7 +273,6 @@ public class ResultActivity extends AppCompatActivity {
 			if (selectedA > selectedB) {
 				int temp = selectedA;
 				selectedA = selectedB;
-				// TODO check "java is passing by value"
 				selectedB = temp;
 			}
 		}
@@ -331,11 +323,14 @@ public class ResultActivity extends AppCompatActivity {
 		Bundle extrasBundle = intent.getExtras();
 		
 		if (extrasBundle != null && !extrasBundle.isEmpty()) {
-			if (extrasBundle.containsKey("isAnalyzed")) {
-				isAnalyzed = extrasBundle.getBoolean("isAnalyzed");
-			}
 			if (extrasBundle.containsKey("currentData")) {
 				currentData = (Data) extrasBundle.getSerializable("currentData");
+			}
+			if (extrasBundle.containsKey("isAnalyzed")) {
+				isAnalyzed = extrasBundle.getBoolean("isAnalyzed");
+				if (isAnalyzed) {
+					startAnalyzing();
+				}
 			}
 		}
 	}

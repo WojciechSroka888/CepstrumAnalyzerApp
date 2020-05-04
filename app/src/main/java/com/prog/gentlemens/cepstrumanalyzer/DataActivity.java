@@ -35,10 +35,11 @@ public class DataActivity extends AppCompatActivity {
 	private Logger logger = Logger.getLogger(DataActivity.class.getName());
 	private DataActivityThreadService dataActivityThreadService;
 	private Toolbar toolbar;
+	private CountDownTimer counter;
 	private Data currentData;
 	private int vowelNameOrdinal;
-	private boolean isRecordAllowed = true;
 	private int recordingTime;
+	private boolean isRecordAllowed = true;
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	@Override
@@ -75,7 +76,6 @@ public class DataActivity extends AppCompatActivity {
 		setSupportActionBar(toolbar);
 		
 		dataActivityThreadService = DataActivityThreadService.getInstance();
-		//updateCurrentData();
 		Permission.setPermissions(this);
 	}
 	
@@ -107,7 +107,11 @@ public class DataActivity extends AppCompatActivity {
 						startRecording();
 					} else {
 						recordButton.setText(R.string.recording_in_progress);
-						// TODO stopRecording()
+						ProgressBar progressBar = findViewById(R.id.recording_progress_bar);
+						progressBar.setProgress(0);
+						counter.onFinish();
+						counter.cancel();
+						recordButton.setText("Record");
 					}
 				} else {
 					recordButton.setText(R.string.need_user_access_to_record);
@@ -116,16 +120,6 @@ public class DataActivity extends AppCompatActivity {
 		});
 	}
 	
-	/*
-	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
-	private void updateCurrentData() {
-		Serializable serializable = getIntent().getSerializableExtra("currentData");
-		if (serializable != null) {
-			((Button) findViewById(R.id.record_button)).setText(R.string.recorded);
-			currentData = (Data) serializable;
-		}
-	}
-	*/
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		toolbar.inflateMenu(R.menu.three_dot_menu);
@@ -162,7 +156,6 @@ public class DataActivity extends AppCompatActivity {
 				surnameEditText.getText().toString(),//
 				VowelName.values()[vowelNameOrdinal].toString());
 		currentData.setPath(getFilesDir().toString());
-		currentData.setDuration(recordingTime);
 		currentData.createNewFile();
 	}
 	
@@ -189,12 +182,14 @@ public class DataActivity extends AppCompatActivity {
 	}
 	
 	private void recordingTimer(final long millisInFuture) {
-		CountDownTimer counter = new CountDownTimer(millisInFuture, 10) {
+		counter = new CountDownTimer(millisInFuture, 10) {
 			ProgressBar progressBar = findViewById(R.id.recording_progress_bar);
+			long timeElapsed;
 			
 			@Override
 			public void onTick(long millisUntilFinished) {
-				int progressStatus = round(((millisInFuture - millisUntilFinished) * 100.0) / millisInFuture);
+				timeElapsed = millisInFuture - millisUntilFinished;
+				int progressStatus = round(((timeElapsed) * 100.0) / millisInFuture);
 				progressBar.setProgress(progressStatus + 1);
 			}
 			
@@ -205,6 +200,7 @@ public class DataActivity extends AppCompatActivity {
 				Button nextButton = findViewById(R.id.next_button);
 				nextButton.setText(R.string.next);
 				stopRecording();
+				currentData.setDuration(timeElapsed);
 			}
 		};
 		
