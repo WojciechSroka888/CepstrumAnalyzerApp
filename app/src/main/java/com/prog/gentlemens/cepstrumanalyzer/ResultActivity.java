@@ -161,6 +161,7 @@ public class ResultActivity extends AppCompatActivity {
 		
 		if ((selectedA == null) && (selectedB == null)) {
 			cepstrumAll();
+			isAnalyzed = true;
 		} else {
 			logger.info("*****startAnalyzing() --> again()*******");
 			cepstrumPartly();
