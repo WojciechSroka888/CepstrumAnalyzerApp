@@ -26,10 +26,10 @@ public class ScatterGraph {
 	private ScatterData scatterData;
 	private ScatterDataSet scatterDataSet;
 	private TextView legendTextView;
+	// label: title of graph
 	private String label;
-	private String descriptionUp;
+	private String legendTextViewDescription;
 	private Integer tempSelected;
-
 	
 	public ScatterGraph (){}
 	
@@ -43,16 +43,17 @@ public class ScatterGraph {
 		this.label = label;
 	}
 	
-	public void plotScatterGraph(int recordingTime, double jitter, double shimmer, double meanFrequency, double[] frequencies) {
-		//labels - Oy, scatterdataset (entries)- Ox
+	public void plotScatterGraph(long recordingTime, double jitter, double shimmer, double meanFrequency, double[] frequencies) {
 		validateData(frequencies);
 		
+		// Ox values
 		List<Entry> entries = new ArrayList<>();
 		createEntries(entries, frequencies);
 		
+		// Oy values
 		List<String> labels = new ArrayList<>();
 		createLabels(labels, frequencies, recordingTime);
-		//TODO create proper names convenction: legend, label, description, descriptionUp
+		
 		createLegend();
 		
 		scatterDataSet = new ScatterDataSet(entries, label);
@@ -62,7 +63,7 @@ public class ScatterGraph {
 		scatterDataSet.setScatterShape(ScatterChart.ScatterShape.CIRCLE);
 		scatterDataSet.setColors(ColorTemplate.PASTEL_COLORS);
 		scatterData = new ScatterData(labels, scatterDataSet);
-		setDescriptionUp(jitter, shimmer, meanFrequency);
+		setLegendTextViewDescription(jitter, shimmer, meanFrequency);
 		setAxis();
 		scatterChart.setHighlightEnabled(true);
 		scatterChart.setHighlightIndicatorEnabled(true);
@@ -119,7 +120,7 @@ public class ScatterGraph {
 		}
 	}
 	
-	private void createLabels(List<String> labels, double[] frequencies, int recordingTime){
+	private void createLabels(List<String> labels, double[] frequencies, long recordingTime){
 		for (int i = 0; i < frequencies.length; ++i) {
 			labels.add(Integer.toString((int) (((double) 1 / frequencies.length) * i * recordingTime)));  //* 1000 -> ms
 		}
@@ -133,15 +134,15 @@ public class ScatterGraph {
 		legend.setTextSize(12f);
 	}
 	
-	private void setDescriptionUp(Double jitter, Double shimmer, Double meanFrequency){
+	private void setLegendTextViewDescription(Double jitter, Double shimmer, Double meanFrequency){
 		DecimalFormat decimalFormat = new DecimalFormat();
 		decimalFormat.setMaximumFractionDigits(2);
 		
-		//TODO add type name to jitter and shimmers
-		descriptionUp = "Jitter = " + decimalFormat.format(jitter) + " | " + //
-		                "Shimmer = " + decimalFormat.format(shimmer) + " | " + //
-		                "Mean frequency = " + decimalFormat.format(meanFrequency) + " [Hz]";
-		legendTextView.setText(descriptionUp);
+		//TODO add type name to jitter and shimmer
+		legendTextViewDescription = "Jitter = " + decimalFormat.format(jitter) + " | " + //
+		                            "Shimmer = " + decimalFormat.format(shimmer) + " | " + //
+		                            "Mean frequency = " + decimalFormat.format(meanFrequency) + " [Hz]";
+		legendTextView.setText(legendTextViewDescription);
 	}
 	
 	private void setAxis(){
