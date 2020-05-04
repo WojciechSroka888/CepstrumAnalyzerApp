@@ -322,8 +322,6 @@ public final class MathOperations {
 		}
 	}
 	
-	// ********************************************************
-	// TODO validation, TODO names
 	public static float roundPrime(double value) {
 		if ((value >= (Math.floor(value) + 0.25)) && (value <= (Math.floor(value) + 0.75))) {
 			return ((float) (Math.floor(value) + 0.5));
@@ -336,26 +334,32 @@ public final class MathOperations {
 		}
 	}
 	
-	public static double arithmeticFrequencyAverage(double[] tabl) {
-		System.out.println("*****ArithmeticFrequency()*****");
+	public static double arithmeticFrequencyAverage(double[] frequencies) {
+		validateArithmeticFrequencyAverage(frequencies);
+		
 		double result = 0;
 		
 		int n = 0;
 		
-		for (int i = 0; i < tabl.length; ++i, ++n) {
-			if (tabl[i] == 0)        //it means silence
+		for (int i = 0; i < frequencies.length; ++i, ++n) {
+			if (frequencies[i] == 0)        //it means silence
 			{
 				n = n - 1;
 				continue;
 			}
 			
-			result = result + tabl[i];
+			result = result + frequencies[i];
 		}
-		
-		System.out.println("*****END arithmeticFrequency()*****");
 		
 		return n != 0 ? result / n : n;
 	}
+	
+	private static void validateArithmeticFrequencyAverage(double[] frequencies){
+		if(frequencies == null){
+			throw new IllegalArgumentException(" frequencies can not be null");
+		}
+	}
+	
 	
 	public static short[] byteToShortConversion(byte[] byteData) {
 		short[] shortData = new short[byteData.length / 2];
@@ -368,6 +372,7 @@ public final class MathOperations {
 	}
 	
 	public static void shortToByteConversion(short[] shortData, int n, byte[] byteData) {
+		validateShortToByteConversion(shortData, n, byteData);
 		for (int i = 0; i < n; i++) {
 			byteData[i * 2] = (byte) (shortData[i] & 0x00FF);
 			byteData[(i * 2) + 1] = (byte) (shortData[i] >> 8);
@@ -375,14 +380,39 @@ public final class MathOperations {
 		}
 	}
 	
-	public static byte[] shortToByteConversion(short[] shortData, int n) {
-		byte[] resultByteData = new byte[2 * n];
-		for (int i = 0; i < n; i++) {
+	private static void validateShortToByteConversion(short[] shortData, int n, byte[] byteData) {
+		String message = null;
+		
+		if (shortData == null) {
+			message += " shortData can not be null ";
+		}
+		if (byteData == null) {
+			message += " byteData can not be null";
+		}
+		if (n <= 0) {
+			message += " n has to be greater then 0";
+		}
+		if (message != null) {
+			throw new IllegalArgumentException(message);
+		}
+	}
+	
+	public static byte[] shortToByteConversion(short[] shortData) {
+		validateShortToByteConversion(shortData);
+		
+		byte[] resultByteData = new byte[2 * shortData.length];
+		for (int i = 0; i < shortData.length; i++) {
 			resultByteData[i * 2] = (byte) (shortData[i] & 0x00FF);
 			resultByteData[(i * 2) + 1] = (byte) (shortData[i] >> 8);
 			//shortData[i] = 0;						//why ?
 		}
 		return resultByteData;
+	}
+	
+	private static void validateShortToByteConversion(short[] shortData) {
+		if (shortData == null) {
+			throw new IllegalArgumentException(" shortData can not be null");
+		}
 	}
 	
 }
