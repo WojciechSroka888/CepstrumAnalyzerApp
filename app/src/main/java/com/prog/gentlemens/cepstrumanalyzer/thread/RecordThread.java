@@ -8,11 +8,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.logging.Logger;
 
 public class RecordThread implements Runnable {
+	private Logger logger = Logger.getLogger(RecordThread.class.getName());
 	private BlockingQueue<RecordMessage> queueToSendRecordData;
 	private RecordConfiguration recordConfiguration;
 	private AudioRecord audioRecord;
 	private short[] recordArray;
-	private Logger logger = Logger.getLogger(RecordThread.class.getName());
 	
 	public RecordThread(BlockingQueue<RecordMessage> queueToSendRecordData, RecordConfiguration recordConfiguration) {
 		this.queueToSendRecordData = queueToSendRecordData;

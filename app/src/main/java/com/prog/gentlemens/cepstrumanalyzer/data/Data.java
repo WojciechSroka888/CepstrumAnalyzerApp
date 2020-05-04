@@ -87,11 +87,11 @@ public class Data implements Serializable {
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	public byte[] returnByteData() {
 		byte[] resultByteArray = new byte[(int) getCurrentFile().length()];
-		
 		try (InputStream inputStream = new FileInputStream(getCurrentFile())) {
-			if (inputStream.read(resultByteArray) == -1) {
+			/*if (inputStream.read(resultByteArray) == -1) {
 				return resultByteArray;
-			}
+			}*/
+			while(inputStream.read(resultByteArray) > -1){}
 		} catch (IOException e) {
 			logger.warning(e.getMessage());
 		}

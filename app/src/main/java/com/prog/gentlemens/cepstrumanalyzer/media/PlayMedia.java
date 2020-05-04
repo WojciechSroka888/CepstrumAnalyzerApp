@@ -23,10 +23,11 @@ public class PlayMedia {
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	public void startPlaying(final byte[] musicFile) {
-		int minBufferSize = AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
+		int minBufferSize = AudioTrack.getMinBufferSize(22050, AudioFormat.CHANNEL_CONFIGURATION_MONO, AudioFormat.ENCODING_PCM_16BIT);
 		
 		audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 22050, AudioFormat.CHANNEL_CONFIGURATION_MONO, AudioFormat.ENCODING_PCM_16BIT, minBufferSize, AudioTrack.MODE_STREAM);
 		audioTrack.play();
+		
 		
 		Thread playingThread = new Thread(new Runnable() {
 			@Override
@@ -51,6 +52,7 @@ public class PlayMedia {
 				audioTrack.pause();
 			}
 			audioTrack.flush();
+			audioTrack.release();
 			((Button) resultActivity.findViewById(R.id.play_button)).setText("play");
 		}
 	}

@@ -23,6 +23,7 @@ import android.widget.Toast;
 import com.prog.gentlemens.cepstrumanalyzer.data.Data;
 import com.prog.gentlemens.cepstrumanalyzer.enums.VowelName;
 import com.prog.gentlemens.cepstrumanalyzer.permission.Permission;
+import com.prog.gentlemens.cepstrumanalyzer.thread.RecordConfiguration;
 import com.prog.gentlemens.cepstrumanalyzer.thread.service.DataActivityThreadService;
 
 import java.io.IOException;
@@ -215,6 +216,7 @@ public class DataActivity extends AppCompatActivity {
 		setRecordingTime();
 		initData();
 		dataActivityThreadService.initWriteThread(currentData);
+		dataActivityThreadService.initRecordThread(new RecordConfiguration.RecordConfigurationBuilder().withBufferElementsRec(1024).build());
 		dataActivityThreadService.start();
 		recordingTimer(recordingTime);
 	}
@@ -232,7 +234,6 @@ public class DataActivity extends AppCompatActivity {
 			     .show();
 		}
 	}
-	
 	
 	@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 	@Override
