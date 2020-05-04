@@ -31,7 +31,6 @@ public class WriteThread implements Runnable {
 		this.currentData = currentData;
 	}
 	
-	//TODO validate this data
 	public void init(Data currentData) {
 		this.currentData = currentData;
 	}
@@ -41,11 +40,11 @@ public class WriteThread implements Runnable {
 	public void run() {
 		try (FileOutputStream fileOutputStream = new FileOutputStream(currentData.getCurrentFile())) {
 			while (queueWithRecordThread.take().streaming()) {
-				fileOutputStream.write(shortToByteConversion(queueWithRecordThread.take()
-				                                                                  .getContentArray(), queueWithRecordThread
-						.take()
-						.getContentArray().length));
+				fileOutputStream.write(shortToByteConversion(//
+						queueWithRecordThread.take().getContentArray()));
 			}
+		} catch (IllegalArgumentException e) {
+			logger.warning(e.getMessage());
 		} catch (InterruptedException | FileNotFoundException e) {
 			logger.warning(e.getMessage());
 			Thread.currentThread().interrupt();
