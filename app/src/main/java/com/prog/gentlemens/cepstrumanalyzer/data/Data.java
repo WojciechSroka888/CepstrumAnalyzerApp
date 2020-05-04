@@ -19,7 +19,7 @@ public class Data implements Serializable {
 	private String name;
 	private String absolutePath;
 	private File currentFile;
-	private int duration;
+	private long duration;
 	
 	public void setName(String... information) {
 		if (name == null) {
@@ -41,14 +41,14 @@ public class Data implements Serializable {
 		return name;
 	}
 	
-	public void setDuration(int duration) {
+	public void setDuration(long duration) {
 		if(duration <= 0){
 			throw new IllegalArgumentException("duration can not be less then zero");
 		}
 		this.duration = duration;
 	}
 	
-	public int getDuration() {
+	public long getDuration() {
 		return duration;
 	}
 	
