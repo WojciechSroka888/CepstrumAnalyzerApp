@@ -278,7 +278,6 @@ public class ResultActivity extends AppCompatActivity {
 		}
 	}
 	
-	@RequiresApi(api = Build.VERSION_CODES.O)
 	private void findMax(double[] frequencies, double[] amplitudes, double[][] tabl, int N, final int samplingFrequency) {
 		double tempMax;                    //looking for maximum
 		final double maxFrequency = 400;
