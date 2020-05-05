@@ -11,7 +11,9 @@
         android:theme="@style/AppTheme">
 
         <activity android:name="com.prog.gentlemens.cepstrumanalyzer.ResultActivity">
+            <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
         </activity>
 
         <activity android:name="com.prog.gentlemens.cepstrumanalyzer.DataActivity">
