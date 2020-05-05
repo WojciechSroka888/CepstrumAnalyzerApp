@@ -45,19 +45,3 @@ where point A is the start and point B is the end.
 is beetwen 40 - 400 [Hz]) but you can calculate the every basic frequency that is in range 40 [Hz] to 400 [Hz].
 For example you can check the piano frequency beetwen voices from E1 to G4. You can take a look and see the
 result of this on website:  https://cepstralanalysisapp.webnode.com.
-
-*******************BUGS***********************
-1. Deleting files
-2. Better permission
-3. Helpful informations - Snack Library
-4. Settings length of record
-5. Better graphic -> more options and size of "Speech wave project" image
-6. More informations on website
-7. Full english
-8. Playing the record on Android 7 and higher
-9. Widely frequency analysist
-10. Dynamics analysist
-11. Better data managment
-12* prepare user databes and user profile
-
-As I sad, there are few bugs and strange behavior of the application. I hope to improve it in the future.
