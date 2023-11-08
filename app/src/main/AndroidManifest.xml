@@ -9,13 +9,13 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <activity android:name="com.prog.gentlemens.cepstrumanalyzer.ResultActivity">
+        <activity android:name="com.prog.gentlemens.cepstrumanalyzer.activity.ResultActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
 
-        <activity android:name="com.prog.gentlemens.cepstrumanalyzer.DataActivity">
+        <activity android:name="com.prog.gentlemens.cepstrumanalyzer.activity.DataActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
